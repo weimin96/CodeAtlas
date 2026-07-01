@@ -145,11 +145,17 @@ async function enrichContext(root, context) {
     try {
       const file = await readTextFileSafe(root, rel, 80_000);
       next.currentFile = { ...(context.currentFile || {}), path: rel, content: file.content, truncated: file.truncated };
+      const lines = file.content.split(/\r?\n/);
       if (context.selection?.startLine && context.selection?.endLine) {
-        const lines = file.content.split(/\r?\n/);
         const start = Math.max(1, Number(context.selection.startLine));
         const end = Math.max(start, Number(context.selection.endLine));
         next.selectedCode = lines.slice(start - 1, end).join('\n');
+      }
+      if (context.currentSymbol?.startLine && context.currentSymbol?.endLine) {
+        const start = Math.max(1, Number(context.currentSymbol.startLine));
+        const end = Math.max(start, Number(context.currentSymbol.endLine));
+        next.currentSymbol = context.currentSymbol;
+        next.symbolCode = lines.slice(start - 1, end).join('\n');
       }
     } catch {
       // skip

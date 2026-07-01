@@ -1,6 +1,18 @@
 export type Confidence = 'fact' | 'guess' | 'unknown';
 export type Priority = 'P0' | 'P1' | 'P2' | 'P3';
 
+export type SymbolKind = 'function' | 'class' | 'method' | 'interface' | 'type' | 'constant';
+
+export interface SymbolInfo {
+  id: string;
+  name: string;
+  kind: SymbolKind;
+  path: string;
+  startLine: number;
+  endLine: number;
+  signature?: string;
+}
+
 export interface ScanFile {
   path: string;
   type: 'file';
@@ -9,6 +21,7 @@ export interface ScanFile {
   language: string;
   text: boolean;
   size: number;
+  symbols?: SymbolInfo[];
 }
 
 export interface Report {

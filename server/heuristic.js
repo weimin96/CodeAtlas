@@ -14,7 +14,7 @@ export function buildHeuristicReport(scan) {
     }));
 
   const modules = inferModules(scan.files);
-  const flows = buildFlows(entrypoints, modules);
+  const flows = buildFlows(entrypoints, modules, scan.files);
   const mermaid = buildMermaid(entrypoints, modules);
 
   return {
@@ -94,14 +94,17 @@ function guessResponsibility(name, files) {
   return roles || '待确认职责。';
 }
 
-function buildFlows(entrypoints, modules) {
+function buildFlows(entrypoints, modules, files) {
   const primaryEntry = entrypoints.find((e) => /入口|路由|api|routes/i.test(e.kind + e.path)) || entrypoints[0];
   const serviceModule = modules.find((m) => /业务|service|usecase|domain/i.test(m.responsibility + m.name));
   const dataModule = modules.find((m) => /数据|db|model|schema|repository|prisma/i.test(m.responsibility + m.name));
+  const primaryFile = files.find((file) => file.path === primaryEntry?.path);
+  const serviceFile = pickModuleFile(files, serviceModule);
+  const dataFile = pickModuleFile(files, dataModule);
   const steps = [];
-  if (primaryEntry) steps.push({ order: 1, path: primaryEntry.path, symbol: '', description: '候选请求/系统入口', confidence: 'guess' });
-  if (serviceModule) steps.push({ order: 2, path: serviceModule.paths[0], symbol: '', description: '候选业务处理层', confidence: 'guess' });
-  if (dataModule) steps.push({ order: 3, path: dataModule.paths[0], symbol: '', description: '候选数据读写层', confidence: 'guess' });
+  if (primaryEntry) steps.push(flowStep(1, primaryEntry.path, pickSymbol(primaryFile), '候选请求/系统入口'));
+  if (serviceFile) steps.push(flowStep(2, serviceFile.path, pickSymbol(serviceFile), '候选业务处理层'));
+  if (dataFile) steps.push(flowStep(3, dataFile.path, pickSymbol(dataFile), '候选数据读写层'));
   return [{
     name: '候选主流程',
     trigger: '用户请求 / 页面操作 / 系统任务',
@@ -111,9 +114,32 @@ function buildFlows(entrypoints, modules) {
     dataReads: [],
     dataWrites: [],
     externalCalls: [],
-    breakpoints: steps.map((s) => s.path).filter(Boolean),
+    breakpoints: steps.map((s) => s.symbol ? `${s.path}:${s.symbol}` : s.path).filter(Boolean),
     notes: ['需要 AI 或断点验证真实调用顺序。']
   }];
+}
+
+function pickModuleFile(files, module) {
+  if (!module) return null;
+  return files.find((file) => file.text && file.path.startsWith(`${module.name}/`) && file.symbols?.length)
+    || files.find((file) => file.text && file.path.startsWith(`${module.name}/`))
+    || null;
+}
+
+function pickSymbol(file) {
+  return file?.symbols?.find((symbol) => symbol.kind === 'function' || symbol.kind === 'method' || symbol.kind === 'class') || null;
+}
+
+function flowStep(order, path, symbol, description) {
+  return {
+    order,
+    path,
+    symbol: symbol?.name || '',
+    startLine: symbol?.startLine,
+    endLine: symbol?.endLine,
+    description,
+    confidence: 'guess'
+  };
 }
 
 function buildMermaid(entrypoints, modules) {

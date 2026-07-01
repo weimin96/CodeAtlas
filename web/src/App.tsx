@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Editor, { OnMount } from '@monaco-editor/react';
 import { Bot, BrainCircuit, CircleAlert, FileCode2, GitBranch, KeyRound, Loader2, Map, Play, RefreshCw, Route, Search, ShieldAlert, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { MermaidPanel } from '@/components/MermaidPanel';
-import type { Report, ScanFile } from '@/types';
+import type { Report, ScanFile, SymbolInfo } from '@/types';
 
 interface ProjectPayload {
   projectDir: string;
-  scan: { files: ScanFile[]; keyFiles: ScanFile[]; totalFiles: number; totalDirs: number; summary: { stack: string[] } };
+  scan: { files: ScanFile[]; keyFiles: ScanFile[]; totalFiles: number; totalDirs: number; totalSymbols?: number; summary: { stack: string[] } };
   report: Report;
 }
 
@@ -35,6 +35,7 @@ export default function App() {
   const [report, setReport] = useState<Report | null>(null);
   const [currentFile, setCurrentFile] = useState<FilePayload | null>(null);
   const [selection, setSelection] = useState<{ startLine: number; endLine: number } | null>(null);
+  const [currentSymbol, setCurrentSymbol] = useState<SymbolInfo | null>(null);
   const [activeFlow, setActiveFlow] = useState<any>(null);
   const [activeRisk, setActiveRisk] = useState<any>(null);
   const [config, setConfig] = useState(defaultConfig);
@@ -43,6 +44,7 @@ export default function App() {
   const [loading, setLoading] = useState<string>('');
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<ScanFile[]>([]);
+  const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
 
   useEffect(() => {
     loadProject();
@@ -69,7 +71,9 @@ export default function App() {
       const file = await fetch(`/api/file?path=${encodeURIComponent(path)}`).then((r) => r.json());
       if (file.error) throw new Error(file.error);
       setCurrentFile(file);
+      setCurrentSymbol(null);
       if (line) setSelection({ startLine: line, endLine: line });
+      else setSelection(null);
     } catch (err) {
       setAnswer(`无法打开文件：${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -125,6 +129,7 @@ export default function App() {
         projectOverview: report?.projectOverview,
         currentFile: currentFile ? { path: currentFile.path, truncated: currentFile.truncated } : null,
         selection,
+        currentSymbol,
         activeFlow,
         activeRisk
       };
@@ -137,14 +142,34 @@ export default function App() {
   }
 
   const files = payload?.scan?.files?.filter((f) => f.text).slice(0, 500) || [];
+  const currentScanFile = useMemo(
+    () => payload?.scan?.files?.find((file) => file.path === currentFile?.path) || null,
+    [payload, currentFile]
+  );
+  const currentFileSymbols = currentScanFile?.symbols || [];
 
   const editorMount: OnMount = (editor) => {
+    editorRef.current = editor;
     editor.onDidChangeCursorSelection((event) => {
       const startLine = event.selection.startLineNumber;
       const endLine = event.selection.endLineNumber;
       setSelection({ startLine: Math.min(startLine, endLine), endLine: Math.max(startLine, endLine) });
     });
   };
+
+  function openSymbol(symbol: SymbolInfo) {
+    setCurrentSymbol(symbol);
+    setSelection({ startLine: symbol.startLine, endLine: symbol.endLine });
+    editorRef.current?.revealLineInCenter(symbol.startLine);
+    editorRef.current?.setPosition({ lineNumber: symbol.startLine, column: 1 });
+    editorRef.current?.setSelection({
+      startLineNumber: symbol.startLine,
+      startColumn: 1,
+      endLineNumber: symbol.endLine,
+      endColumn: 1
+    });
+    editorRef.current?.focus();
+  }
 
   const confidenceVariant = (c?: string) => c === 'fact' ? 'success' : c === 'guess' ? 'warning' : 'outline';
   const riskVariant = (l?: string) => l === 'high' ? 'destructive' : l === 'medium' ? 'warning' : 'secondary';
@@ -161,6 +186,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline">{payload?.scan?.totalFiles || 0} files</Badge>
+          <Badge variant="outline">{payload?.scan?.totalSymbols || 0} symbols</Badge>
           <Button size="sm" variant="outline" onClick={rescan} disabled={!!loading}><RefreshCw size={14} />重新扫描</Button>
           <Button size="sm" onClick={analyze} disabled={!!loading}><Sparkles size={14} />开始 AI 分析</Button>
         </div>
@@ -236,6 +262,7 @@ export default function App() {
           <div className="flex items-center gap-2 border-b px-3 py-2">
             <FileCode2 size={16} />
             <div className="font-mono text-sm truncate flex-1">{currentFile?.path || '未选择文件'}</div>
+            {currentSymbol && <Badge variant="secondary">{currentSymbol.kind} · {currentSymbol.name}</Badge>}
             {selection && <Badge variant="outline">L{selection.startLine}-L{selection.endLine}</Badge>}
           </div>
 
@@ -245,10 +272,24 @@ export default function App() {
                 <Search size={14} />
                 <Input className="h-8" value={search} onChange={(e) => runSearch(e.target.value)} placeholder="搜索文件路径" />
               </div>
+              {currentFileSymbols.length > 0 && (
+                <div className="rounded-md border p-2 space-y-1">
+                  <div className="text-xs font-medium">当前文件符号</div>
+                  {currentFileSymbols.map((symbol) => (
+                    <button key={symbol.id} onClick={() => openSymbol(symbol)} className="w-full rounded px-2 py-1 text-left text-xs hover:bg-accent">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="truncate font-mono">{symbol.name}</span>
+                        <Badge variant="outline">{symbol.kind}</Badge>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">L{symbol.startLine}-L{symbol.endLine}</div>
+                    </button>
+                  ))}
+                </div>
+              )}
               {(results.length ? results : files).slice(0, 180).map((f) => (
                 <button key={f.path} onClick={() => openFile(f.path)} className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-accent">
                   <div className="truncate font-mono">{f.path}</div>
-                  <div className="text-[10px] text-muted-foreground">{f.priority} · {f.role}</div>
+                  <div className="text-[10px] text-muted-foreground">{f.priority} · {f.role}{f.symbols?.length ? ` · ${f.symbols.length} symbols` : ''}</div>
                 </button>
               ))}
             </div>
@@ -272,7 +313,7 @@ export default function App() {
               <CardDescription>追问会自动绑定当前文件、选中行、链路和风险。</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <ContextSummary currentFile={currentFile} activeFlow={activeFlow} activeRisk={activeRisk} selection={selection} />
+              <ContextSummary currentFile={currentFile} currentSymbol={currentSymbol} activeFlow={activeFlow} activeRisk={activeRisk} selection={selection} />
               <div className="grid grid-cols-2 gap-2">
                 {['解释当前文件主流程', '找这段代码的风险', '追踪数据读写', '推荐断点验证', '改这里影响哪里', '下一步看什么'].map((q) => <Button key={q} size="sm" variant="outline" onClick={() => ask(q)}>{q}</Button>)}
               </div>
@@ -315,9 +356,10 @@ function Overview({ report, confidenceVariant }: { report: Report | null; confid
   </Card>;
 }
 
-function ContextSummary({ currentFile, activeFlow, activeRisk, selection }: any) {
+function ContextSummary({ currentFile, currentSymbol, activeFlow, activeRisk, selection }: any) {
   return <div className="rounded-lg border bg-slate-950 p-3 text-xs text-muted-foreground space-y-1">
     <div>文件：<span className="font-mono text-foreground">{currentFile?.path || '-'}</span></div>
+    <div>符号：<span className="text-foreground">{currentSymbol ? `${currentSymbol.kind} ${currentSymbol.name}` : '-'}</span></div>
     <div>选区：<span className="text-foreground">{selection ? `L${selection.startLine}-L${selection.endLine}` : '-'}</span></div>
     <div>链路：<span className="text-foreground">{activeFlow?.name || '-'}</span></div>
     <div>风险：<span className="text-foreground">{activeRisk?.title || '-'}</span></div>

@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { IGNORE_DIRS, isProbablyText, toPosix, readTextFileSafe } from './fs-utils.js';
+import { canExtractSymbols, extractSymbols } from './symbol-indexer.js';
 
 const ENTRY_PATTERNS = [
   /(^|\/)main\.(ts|js|go|py|rs|java|kt|cs)$/i,
@@ -76,19 +77,36 @@ async function walk(root, dir = '', depth = 0, maxDepth = 8, result = []) {
     } else if (entry.isFile()) {
       const absoluteFile = path.join(root, rel);
       const stat = await fs.stat(absoluteFile);
+      const language = languageFromPath(posix);
+      const text = isProbablyText(absoluteFile);
+      const symbols = text && canExtractSymbols(language)
+        ? await extractFileSymbols(root, posix, language, stat.size)
+        : [];
       result.push({
         path: posix,
         type: 'file',
         depth,
         size: stat.size,
-        language: languageFromPath(posix),
-        text: isProbablyText(absoluteFile),
+        language,
+        text,
         role: fileRole(posix),
-        priority: filePriority(posix)
+        priority: filePriority(posix),
+        symbols
       });
     }
   }
   return result;
+}
+
+async function extractFileSymbols(root, relPath, language, size) {
+  if (size > 220_000) return [];
+  try {
+    const file = await readTextFileSafe(root, relPath, 220_000);
+    if (file.truncated) return [];
+    return extractSymbols({ path: relPath, language, content: file.content });
+  } catch {
+    return [];
+  }
 }
 
 function guessDirRole(relPath) {
@@ -125,6 +143,7 @@ export async function scanProject(root) {
   const items = await walk(root);
   const files = items.filter((item) => item.type === 'file');
   const dirs = items.filter((item) => item.type === 'dir');
+  const symbols = files.flatMap((file) => file.symbols || []);
   const keyFiles = pickKeyFiles(files);
   const summary = inferSummary(files);
   return {
@@ -132,8 +151,10 @@ export async function scanProject(root) {
     scannedAt: new Date().toISOString(),
     totalFiles: files.length,
     totalDirs: dirs.length,
+    totalSymbols: symbols.length,
     tree: compactTree(items, 320),
     files,
+    symbols,
     keyFiles,
     summary
   };
@@ -158,6 +179,7 @@ function scoreFile(file) {
   if (/readme|package\.json|go\.mod|cargo\.toml|pyproject|docker-compose|schema\.prisma/.test(p)) score += 60;
   if (/routes?|api|controllers?|handlers?|main|server|app|index/.test(p)) score += 40;
   if (/services?|usecases?|domain|auth|middleware|jobs?|workers?/.test(p)) score += 35;
+  if (Array.isArray(file.symbols)) score += Math.min(file.symbols.length * 3, 30);
   if (/test|spec|stories|mock/.test(p)) score -= 10;
   return score;
 }
@@ -168,7 +190,8 @@ function compactTree(items, limit) {
     type: item.type,
     role: item.role,
     priority: item.priority,
-    language: item.language
+    language: item.language,
+    symbolCount: item.symbols?.length || 0
   }));
 }
 
@@ -202,6 +225,7 @@ export async function readContextBundle(root, keyFiles, maxFiles = 28) {
         role: file.role,
         priority: file.priority,
         language: file.language,
+        symbols: file.symbols || [],
         content: read.content
       });
     } catch {

@@ -17,7 +17,7 @@
   "scripts": {
     "dev": "node bin/pfo.js . --port 7890 --no-open",
     "start": "node bin/pfo.js .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p web/tsconfig.json --noEmit",
     "pack:local": "npm pack"
   },
   "engines": {
