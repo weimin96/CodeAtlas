@@ -1,0 +1,124 @@
+import { generateText } from 'ai';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOllama } from 'ollama-ai-provider-v2';
+
+export function modelFromConfig(config = {}) {
+  const provider = config.provider || process.env.PFO_AI_PROVIDER || 'openai-compatible';
+  const modelName = config.model || process.env.OPENAI_MODEL || process.env.PFO_AI_MODEL || 'gpt-4.1-mini';
+  const apiKey = config.apiKey || process.env.OPENAI_API_KEY || process.env.PFO_AI_API_KEY;
+  const baseURL = config.baseURL || process.env.OPENAI_BASE_URL || process.env.PFO_AI_BASE_URL;
+
+  if (provider === 'openai') {
+    const openai = createOpenAI({ apiKey, baseURL });
+    return openai(modelName);
+  }
+
+  if (provider === 'ollama') {
+    const ollama = createOllama({ baseURL: baseURL || 'http://127.0.0.1:11434/api' });
+    return ollama(modelName || 'qwen2.5-coder:7b');
+  }
+
+  const compatible = createOpenAICompatible({
+    name: 'openai-compatible',
+    apiKey,
+    baseURL: baseURL || 'https://api.openai.com/v1'
+  });
+  return compatible(modelName);
+}
+
+export async function analyzeWithAI({ scan, chunks, config }) {
+  const model = modelFromConfig(config);
+  const prompt = buildAnalyzePrompt(scan, chunks);
+  const result = await generateText({
+    model,
+    system: SYSTEM_PROMPT,
+    prompt,
+    temperature: 0.15
+  });
+  return parseJsonResult(result.text);
+}
+
+export async function askWithAI({ question, context, config }) {
+  const model = modelFromConfig(config);
+  const prompt = buildAskPrompt(question, context);
+  const result = await generateText({
+    model,
+    system: ASK_SYSTEM_PROMPT,
+    prompt,
+    temperature: 0.2
+  });
+  return result.text;
+}
+
+const SYSTEM_PROMPT = `你是“项目快速接管工作台”的代码理解引擎。用户刚接手陌生项目，需要先通过你建立第一版项目地图，然后本人快速验证。
+
+要求：
+- 只基于提供的目录和代码片段分析，不要编造。
+- 每个关键结论标注 confidence: fact | guess | unknown。
+- 优先速度和主干：入口、模块、核心链路、数据副作用、风险、阅读路线。
+- 输出必须是严格 JSON，不要 Markdown，不要代码围栏。
+- flows.steps 必须尽量绑定 path、symbol、startLine、endLine；不知道行号可省略。
+- mermaid 输出可渲染的 flowchart TD 或 sequenceDiagram。
+
+JSON 结构：
+{
+  "generatedBy": "ai",
+  "projectOverview": {"name":"", "type":"", "techStack":[], "startup":"", "confidence":"fact|guess|unknown", "summary":""},
+  "entrypoints": [{"name":"", "path":"", "kind":"", "confidence":"fact|guess|unknown", "evidence":""}],
+  "modules": [{"name":"", "paths":[], "responsibility":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "evidence":""}],
+  "flows": [{"name":"", "trigger":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "steps":[{"order":1,"path":"","symbol":"","startLine":1,"endLine":1,"description":"","confidence":"fact|guess|unknown"}], "dataReads":[], "dataWrites":[], "externalCalls":[], "breakpoints":[], "notes":[]}],
+  "risks": [{"title":"", "level":"high|medium|low", "path":"", "startLine":1, "endLine":1, "reason":"", "verify":""}],
+  "readingPlan": [{"timebox":"", "goal":"", "files":[], "output":""}],
+  "unknowns": [],
+  "mermaid": "flowchart TD\n  A[触发] --> B[入口]"
+}`;
+
+const ASK_SYSTEM_PROMPT = `你是项目快速接管助手。回答必须围绕当前文件、选中代码、当前链路或风险点。不要泛泛解释。
+
+回答结构：
+1. 结论
+2. 证据：引用具体文件/函数/代码片段
+3. 可能风险或误解
+4. 下一步验证动作
+
+如果证据不足，直接说“不确定”，并说明需要打开或搜索哪些文件。`;
+
+function buildAnalyzePrompt(scan, chunks) {
+  const fileList = scan.keyFiles.slice(0, 80).map((f) => `${f.priority} | ${f.role} | ${f.path} | ${f.language}`).join('\n');
+  const code = chunks.map((c) => `--- FILE: ${c.path}\nROLE: ${c.role}\nLANG: ${c.language}\n${c.content.slice(0, 24000)}`).join('\n\n');
+  return `项目根目录：${scan.root}
+扫描概况：files=${scan.totalFiles}, dirs=${scan.totalDirs}
+
+候选关键文件：
+${fileList}
+
+目录树摘要：
+${JSON.stringify(scan.tree.slice(0, 220), null, 2)}
+
+关键文件内容：
+${code}
+
+请生成项目快速接管 JSON。`;
+}
+
+function buildAskPrompt(question, context) {
+  return `用户问题：
+${question}
+
+当前上下文：
+${JSON.stringify(context, null, 2)}
+
+请基于上下文回答。`;
+}
+
+export function parseJsonResult(text) {
+  const cleaned = text.trim().replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+    throw new Error('AI response is not valid JSON.');
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "name": "project-fast-onboarding",
+  "version": "0.2.0",
+  "description": "Local AI project onboarding workbench with code preview, flow maps, risk radar, and context-bound Q&A.",
+  "type": "module",
+  "bin": {
+    "pfo": "bin/pfo.js",
+    "project-fast-onboarding": "bin/pfo.js"
+  },
+  "files": [
+    "bin",
+    "server",
+    "web",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "dev": "node bin/pfo.js . --port 7890 --no-open",
+    "start": "node bin/pfo.js .",
+    "typecheck": "tsc --noEmit",
+    "pack:local": "npm pack"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.0",
+    "@ai-sdk/openai-compatible": "^1.0.0",
+    "@monaco-editor/react": "^4.7.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "ai": "^6.0.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "commander": "^14.0.0",
+    "express": "^5.0.0",
+    "lucide-react": "^0.468.0",
+    "mermaid": "^11.0.0",
+    "ollama-ai-provider-v2": "^3.6.0",
+    "open": "^10.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.0",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.6.0",
+    "vite": "^7.0.0",
+    "zod": "^3.24.0"
+  },
+  "keywords": [
+    "ai",
+    "codebase",
+    "onboarding",
+    "rag",
+    "vite",
+    "react",
+    "tailwind",
+    "shadcn",
+    "mermaid"
+  ],
+  "author": "",
+  "license": "MIT"
+}
