@@ -15,7 +15,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "node bin/pfo.js . --port 7890 --no-open",
+    "dev": "node bin/pfo.js . --port 3000",
     "start": "node bin/pfo.js .",
     "typecheck": "tsc -p web/tsconfig.json --noEmit",
     "pack:local": "npm pack"
