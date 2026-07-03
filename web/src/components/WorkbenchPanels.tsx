@@ -1,4 +1,5 @@
 import { Sparkles } from 'lucide-react';
+import { ActionItem } from '@/components/common/ActionItem';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import type { CoreFlow, FlowStep, Report, SymbolInfo } from '@/types';
@@ -29,14 +30,14 @@ export function FlowDetail({ flow, onOpenStep }: { flow: CoreFlow; onOpenStep: (
     </div>
     <div className="space-y-1">
       {flow.steps?.map((step) => (
-        <button key={`${step.order}-${step.path}-${step.symbol || ''}`} onClick={() => onOpenStep(step)} className="w-full rounded-md border p-2 text-left hover:bg-accent">
+        <ActionItem key={`${step.order}-${step.path}-${step.symbol || ''}`} onClick={() => onOpenStep(step)}>
           <div className="flex items-center justify-between gap-2">
             <span className="font-medium">{step.order}. {step.description}</span>
             <Badge variant="secondary">{step.confidence || flow.confidence}</Badge>
           </div>
           <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{step.path}{step.symbol ? ` · ${step.symbol}` : ''}</div>
           {step.startLine && <div className="text-[10px] text-muted-foreground">L{step.startLine}{step.endLine ? `-L${step.endLine}` : ''}</div>}
-        </button>
+        </ActionItem>
       ))}
     </div>
     <FlowFacts title="数据读取" items={flow.dataReads} />

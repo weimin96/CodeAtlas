@@ -14,6 +14,13 @@ export interface SymbolInfo {
   signature?: string;
 }
 
+export interface FilePayload {
+  path: string;
+  content: string;
+  truncated: boolean;
+  size: number;
+}
+
 export interface ScanFile {
   path: string;
   type: 'file';
@@ -86,6 +93,20 @@ export interface CoreFlow {
   notes?: string[];
   mermaid?: string;
   sequenceDiagram?: string;
+}
+
+export interface ProjectPayload {
+  projectDir: string;
+  scan: {
+    files: ScanFile[];
+    keyFiles: ScanFile[];
+    totalFiles: number;
+    totalDirs: number;
+    totalSymbols?: number;
+    repoMap?: RepoMap;
+    summary: { stack: string[] };
+  };
+  report: Report;
 }
 
 export interface Report {
