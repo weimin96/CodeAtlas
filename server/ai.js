@@ -59,7 +59,9 @@ const SYSTEM_PROMPT = `你是“项目快速接管工作台”的代码理解引
 - 优先速度和主干：入口、模块、核心链路、数据副作用、风险、阅读路线。
 - 输出必须是严格 JSON，不要 Markdown，不要代码围栏。
 - flows.steps 必须尽量绑定 path、symbol、startLine、endLine；不知道行号可省略。
-- mermaid 输出可渲染的 flowchart TD 或 sequenceDiagram。
+- flows 每条链路必须包含数据读取、数据写入、外部调用、推荐断点和不确定点。
+- flows.mermaid 输出该链路可渲染的 flowchart TD；flows.sequenceDiagram 可输出 sequenceDiagram。
+- 顶层 mermaid 输出 2-5 条核心链路的总览 flowchart TD。
 
 JSON 结构：
 {
@@ -67,7 +69,7 @@ JSON 结构：
   "projectOverview": {"name":"", "type":"", "techStack":[], "startup":"", "confidence":"fact|guess|unknown", "summary":""},
   "entrypoints": [{"name":"", "path":"", "kind":"", "confidence":"fact|guess|unknown", "evidence":""}],
   "modules": [{"name":"", "paths":[], "responsibility":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "evidence":""}],
-  "flows": [{"name":"", "trigger":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "steps":[{"order":1,"path":"","symbol":"","startLine":1,"endLine":1,"description":"","confidence":"fact|guess|unknown"}], "dataReads":[], "dataWrites":[], "externalCalls":[], "breakpoints":[], "notes":[]}],
+  "flows": [{"id":"", "kind":"api|page|cli|worker|consumer|job|unknown", "name":"", "trigger":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "steps":[{"order":1,"path":"","symbol":"","startLine":1,"endLine":1,"description":"","confidence":"fact|guess|unknown"}], "dataReads":[], "dataWrites":[], "externalCalls":[], "breakpoints":[], "unknowns":[], "notes":[], "mermaid":"flowchart TD\n  A[触发] --> B[入口]", "sequenceDiagram":"sequenceDiagram\n  participant A as 触发"}],
   "risks": [{"title":"", "level":"high|medium|low", "path":"", "startLine":1, "endLine":1, "reason":"", "verify":""}],
   "readingPlan": [{"timebox":"", "goal":"", "files":[], "output":""}],
   "unknowns": [],

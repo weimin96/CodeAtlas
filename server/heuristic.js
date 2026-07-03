@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { buildCoreFlows, buildFlowsMermaid } from './flow-analyzer.js';
 
 export function buildHeuristicReport(scan) {
   const stack = scan.summary.stack;
@@ -14,8 +15,8 @@ export function buildHeuristicReport(scan) {
     }));
 
   const modules = inferModules(scan.files);
-  const flows = buildFlows(entrypoints, modules, scan.files);
-  const mermaid = buildMermaid(entrypoints, modules);
+  const flows = buildCoreFlows(scan);
+  const mermaid = buildFlowsMermaid(flows);
 
   return {
     generatedBy: 'heuristic',
@@ -44,7 +45,7 @@ export function buildHeuristicReport(scan) {
       { timebox: '10-25 分钟', goal: '确认入口和路由', files: entrypoints.slice(0, 6).map((f) => f.path), output: '入口地图' },
       { timebox: '25-45 分钟', goal: '查看业务层和数据层', files: scan.keyFiles.filter((f) => /业务|数据/.test(f.role)).slice(0, 8).map((f) => f.path), output: '核心链路候选' }
     ],
-    unknowns: ['真实业务目标需要 README、接口、页面或领域模型确认。', '核心调用链需要 AI 分析或人工断点验证。', '风险点需要结合运行路径和测试确认。'],
+    unknowns: ['真实业务目标需要 README、接口、页面或领域模型确认。', '核心调用链由启发式生成，需要 AI 分析或人工断点验证。', '风险点需要结合运行路径和测试确认。'],
     mermaid
   };
 }
@@ -92,67 +93,4 @@ function guessResponsibility(name, files) {
   if (/components?|pages?|views?/.test(p)) return '前端页面或组件。';
   if (/jobs?|workers?|queue/.test(p)) return '异步任务或队列处理。';
   return roles || '待确认职责。';
-}
-
-function buildFlows(entrypoints, modules, files) {
-  const primaryEntry = entrypoints.find((e) => /入口|路由|api|routes/i.test(e.kind + e.path)) || entrypoints[0];
-  const serviceModule = modules.find((m) => /业务|service|usecase|domain/i.test(m.responsibility + m.name));
-  const dataModule = modules.find((m) => /数据|db|model|schema|repository|prisma/i.test(m.responsibility + m.name));
-  const primaryFile = files.find((file) => file.path === primaryEntry?.path);
-  const serviceFile = pickModuleFile(files, serviceModule);
-  const dataFile = pickModuleFile(files, dataModule);
-  const steps = [];
-  if (primaryEntry) steps.push(flowStep(1, primaryEntry.path, pickSymbol(primaryFile), '候选请求/系统入口'));
-  if (serviceFile) steps.push(flowStep(2, serviceFile.path, pickSymbol(serviceFile), '候选业务处理层'));
-  if (dataFile) steps.push(flowStep(3, dataFile.path, pickSymbol(dataFile), '候选数据读写层'));
-  return [{
-    name: '候选主流程',
-    trigger: '用户请求 / 页面操作 / 系统任务',
-    priority: 'P0',
-    confidence: 'guess',
-    steps,
-    dataReads: [],
-    dataWrites: [],
-    externalCalls: [],
-    breakpoints: steps.map((s) => s.symbol ? `${s.path}:${s.symbol}` : s.path).filter(Boolean),
-    notes: ['需要 AI 或断点验证真实调用顺序。']
-  }];
-}
-
-function pickModuleFile(files, module) {
-  if (!module) return null;
-  return files.find((file) => file.text && file.path.startsWith(`${module.name}/`) && file.symbols?.length)
-    || files.find((file) => file.text && file.path.startsWith(`${module.name}/`))
-    || null;
-}
-
-function pickSymbol(file) {
-  return file?.symbols?.find((symbol) => symbol.kind === 'function' || symbol.kind === 'method' || symbol.kind === 'class') || null;
-}
-
-function flowStep(order, path, symbol, description) {
-  return {
-    order,
-    path,
-    symbol: symbol?.name || '',
-    startLine: symbol?.startLine,
-    endLine: symbol?.endLine,
-    description,
-    confidence: 'guess'
-  };
-}
-
-function buildMermaid(entrypoints, modules) {
-  const lines = ['flowchart TD', '  A[用户/系统触发]'];
-  const first = entrypoints[0]?.path || '入口文件';
-  lines.push(`  A --> B["${escapeMermaid(first)}"]`);
-  const service = modules.find((m) => /业务|service|usecase|domain/i.test(m.responsibility + m.name));
-  const data = modules.find((m) => /数据|db|model|schema|repository|prisma/i.test(m.responsibility + m.name));
-  if (service) lines.push(`  B --> C["${escapeMermaid(service.name)}"]`);
-  if (data) lines.push(`  C --> D[("${escapeMermaid(data.name)}")]`);
-  return lines.join('\n');
-}
-
-function escapeMermaid(text) {
-  return String(text).replace(/"/g, "'").slice(0, 80);
 }

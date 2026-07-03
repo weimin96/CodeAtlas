@@ -9,6 +9,7 @@ import { readTextFileSafe, ensureInside, isProbablyText, toPosix } from './fs-ut
 import { analyzeWithAI, askWithAI } from './ai.js';
 import { readConfig, writeConfig, redactConfig } from './config-store.js';
 import { buildContextPack } from './context-pack.js';
+import { buildFlowsMermaid } from './flow-analyzer.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
@@ -152,17 +153,45 @@ export async function startServer({ projectDir, port, host }) {
 }
 
 function normalizeReport(report, contextPack = null) {
+  const flows = Array.isArray(report.flows) ? report.flows.map(normalizeFlow) : [];
   return {
     generatedBy: report.generatedBy || 'ai',
     projectOverview: report.projectOverview || {},
     entrypoints: Array.isArray(report.entrypoints) ? report.entrypoints : [],
     modules: Array.isArray(report.modules) ? report.modules : [],
-    flows: Array.isArray(report.flows) ? report.flows : [],
+    flows,
     risks: Array.isArray(report.risks) ? report.risks : [],
     readingPlan: Array.isArray(report.readingPlan) ? report.readingPlan : [],
     unknowns: Array.isArray(report.unknowns) ? report.unknowns : [],
-    mermaid: typeof report.mermaid === 'string' ? report.mermaid : 'flowchart TD\n  A[触发] --> B[入口]',
+    mermaid: typeof report.mermaid === 'string' && report.mermaid.trim() ? report.mermaid : buildFlowsMermaid(flows),
     contextFiles: contextPack ? summarizeContextPack(contextPack).files : []
+  };
+}
+
+function normalizeFlow(flow) {
+  const steps = Array.isArray(flow.steps)
+    ? flow.steps.map((step, index) => ({
+        order: Number(step.order) || index + 1,
+        path: step.path || '',
+        symbol: step.symbol || '',
+        startLine: step.startLine,
+        endLine: step.endLine,
+        description: step.description || '',
+        confidence: step.confidence || flow.confidence || 'guess'
+      }))
+    : [];
+  return {
+    ...flow,
+    kind: flow.kind || 'unknown',
+    priority: flow.priority || 'P1',
+    confidence: flow.confidence || 'guess',
+    steps,
+    dataReads: Array.isArray(flow.dataReads) ? flow.dataReads : [],
+    dataWrites: Array.isArray(flow.dataWrites) ? flow.dataWrites : [],
+    externalCalls: Array.isArray(flow.externalCalls) ? flow.externalCalls : [],
+    breakpoints: Array.isArray(flow.breakpoints) ? flow.breakpoints : [],
+    notes: Array.isArray(flow.notes) ? flow.notes : [],
+    unknowns: Array.isArray(flow.unknowns) ? flow.unknowns : []
   };
 }
 
@@ -206,5 +235,35 @@ async function enrichContext(root, context) {
       // skip
     }
   }
+
+  if (Array.isArray(context.activeFlow?.steps)) {
+    next.flowStepSnippets = await readFlowStepSnippets(root, context.activeFlow.steps);
+  }
   return next;
+}
+
+async function readFlowStepSnippets(root, steps) {
+  const snippets = [];
+  for (const step of steps.slice(0, 8)) {
+    if (!step.path) continue;
+    try {
+      const file = await readTextFileSafe(root, step.path, 80_000);
+      const lines = file.content.split(/\r?\n/);
+      const start = Math.max(1, Number(step.startLine) || 1);
+      const end = Math.max(start, Number(step.endLine) || start);
+      const paddedStart = Math.max(1, start - 4);
+      const paddedEnd = Math.min(lines.length, end + 6);
+      snippets.push({
+        order: step.order,
+        path: step.path,
+        symbol: step.symbol || '',
+        startLine: paddedStart,
+        endLine: paddedEnd,
+        code: lines.slice(paddedStart - 1, paddedEnd).join('\n')
+      });
+    } catch {
+      snippets.push({ order: step.order, path: step.path, error: '无法读取链路步骤文件' });
+    }
+  }
+  return snippets;
 }

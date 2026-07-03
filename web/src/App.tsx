@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { MermaidPanel } from '@/components/MermaidPanel';
-import type { Report, RepoMap, ScanFile, SymbolInfo } from '@/types';
+import type { CoreFlow, FlowStep, Report, RepoMap, ScanFile, SymbolInfo } from '@/types';
 
 interface ProjectPayload {
   projectDir: string;
@@ -36,7 +36,7 @@ export default function App() {
   const [currentFile, setCurrentFile] = useState<FilePayload | null>(null);
   const [selection, setSelection] = useState<{ startLine: number; endLine: number } | null>(null);
   const [currentSymbol, setCurrentSymbol] = useState<SymbolInfo | null>(null);
-  const [activeFlow, setActiveFlow] = useState<any>(null);
+  const [activeFlow, setActiveFlow] = useState<CoreFlow | null>(null);
   const [activeRisk, setActiveRisk] = useState<any>(null);
   const [config, setConfig] = useState(defaultConfig);
   const [question, setQuestion] = useState('');
@@ -165,6 +165,11 @@ export default function App() {
     window.location.href = '/api/repo-map?download=1';
   }
 
+  function openFlowStep(step: FlowStep) {
+    if (!step.path) return;
+    void openFile(step.path, step.startLine);
+  }
+
   function openSymbol(symbol: SymbolInfo) {
     setCurrentSymbol(symbol);
     setSelection({ startLine: symbol.startLine, endLine: symbol.endLine });
@@ -228,14 +233,22 @@ export default function App() {
             <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Route size={16} />核心链路</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {report?.flows?.map((flow, idx) => (
-                <button key={idx} onClick={() => { setActiveFlow(flow); const p = flow.steps?.[0]?.path; if (p) void openFile(p, flow.steps?.[0]?.startLine); }} className="w-full rounded-lg border p-3 text-left hover:bg-accent">
+                <button key={flow.id || idx} onClick={() => { setActiveFlow(flow); const first = flow.steps?.[0]; if (first) openFlowStep(first); }} className="w-full rounded-lg border p-3 text-left hover:bg-accent">
                   <div className="flex items-center justify-between gap-2">
                     <div className="font-medium text-sm">{flow.name}</div>
                     <Badge variant={confidenceVariant(flow.confidence) as any}>{flow.confidence}</Badge>
                   </div>
-                  <div className="text-xs text-muted-foreground mt-1">{flow.trigger}</div>
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    <span>{flow.kind || 'unknown'}</span>
+                    <span>·</span>
+                    <span>{flow.steps?.length || 0} steps</span>
+                    <span>·</span>
+                    <span>{flow.priority}</span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{flow.trigger}</div>
                 </button>
               ))}
+              {!report?.flows?.length && <div className="text-xs text-muted-foreground">尚未识别核心链路。</div>}
             </CardContent>
           </Card>
 
@@ -270,13 +283,17 @@ export default function App() {
         <main className="min-w-0 border-r flex flex-col">
           <div className="grid grid-cols-2 gap-3 p-3 border-b bg-card/30">
             <Card className="min-h-52">
-              <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Map size={16} />项目地图</CardTitle></CardHeader>
-              <CardContent>{report?.mermaid && <MermaidPanel chart={report.mermaid} />}</CardContent>
+              <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><Map size={16} />{activeFlow ? '链路图' : '项目地图'}</CardTitle></CardHeader>
+              <CardContent>{(activeFlow?.mermaid || report?.mermaid) && <MermaidPanel chart={activeFlow?.mermaid || report?.mermaid} />}</CardContent>
             </Card>
             <Card className="min-h-52">
-              <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><GitBranch size={16} />模块 / 入口</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="flex items-center gap-2 text-sm"><GitBranch size={16} />{activeFlow ? '链路步骤' : '模块 / 入口'}</CardTitle></CardHeader>
               <CardContent className="space-y-2 text-sm max-h-72 overflow-auto">
-                {report?.modules?.slice(0, 10).map((m, idx) => <div key={idx} className="rounded-md border p-2"><div className="flex items-center justify-between"><span>{m.name}</span><Badge variant={m.priority === 'P0' ? 'default' : 'secondary'}>{m.priority}</Badge></div><div className="text-xs text-muted-foreground mt-1">{m.responsibility}</div></div>)}
+                {activeFlow ? (
+                  <FlowDetail flow={activeFlow} onOpenStep={openFlowStep} />
+                ) : (
+                  report?.modules?.slice(0, 10).map((m, idx) => <div key={idx} className="rounded-md border p-2"><div className="flex items-center justify-between"><span>{m.name}</span><Badge variant={m.priority === 'P0' ? 'default' : 'secondary'}>{m.priority}</Badge></div><div className="text-xs text-muted-foreground mt-1">{m.responsibility}</div></div>)
+                )}
               </CardContent>
             </Card>
           </div>
@@ -395,6 +412,45 @@ function Overview({ report, confidenceVariant }: { report: Report | null; confid
       <div className="flex flex-wrap gap-1">{report?.projectOverview?.techStack?.map((s) => <Badge key={s} variant="secondary">{s}</Badge>)}</div>
     </CardContent>
   </Card>;
+}
+
+function FlowDetail({ flow, onOpenStep }: { flow: CoreFlow; onOpenStep: (step: FlowStep) => void }) {
+  return <div className="space-y-3">
+    <div className="rounded-md border p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-medium">{flow.name}</div>
+        <Badge variant="outline">{flow.kind || 'unknown'}</Badge>
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground">{flow.trigger}</div>
+    </div>
+    <div className="space-y-1">
+      {flow.steps?.map((step) => (
+        <button key={`${step.order}-${step.path}-${step.symbol || ''}`} onClick={() => onOpenStep(step)} className="w-full rounded-md border p-2 text-left hover:bg-accent">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium">{step.order}. {step.description}</span>
+            <Badge variant="secondary">{step.confidence || flow.confidence}</Badge>
+          </div>
+          <div className="mt-1 truncate font-mono text-xs text-muted-foreground">{step.path}{step.symbol ? ` · ${step.symbol}` : ''}</div>
+          {step.startLine && <div className="text-[10px] text-muted-foreground">L{step.startLine}{step.endLine ? `-L${step.endLine}` : ''}</div>}
+        </button>
+      ))}
+    </div>
+    <FlowFacts title="数据读取" items={flow.dataReads} />
+    <FlowFacts title="数据写入" items={flow.dataWrites} />
+    <FlowFacts title="外部调用" items={flow.externalCalls} />
+    <FlowFacts title="推荐断点" items={flow.breakpoints} />
+    <FlowFacts title="不确定点" items={flow.unknowns?.length ? flow.unknowns : flow.notes} />
+  </div>;
+}
+
+function FlowFacts({ title, items }: { title: string; items?: string[] }) {
+  if (!items?.length) return null;
+  return <div className="rounded-md border p-2">
+    <div className="mb-1 text-xs font-medium">{title}</div>
+    <div className="space-y-1">
+      {items.slice(0, 6).map((item) => <div key={item} className="font-mono text-[10px] text-muted-foreground break-all">{item}</div>)}
+    </div>
+  </div>;
 }
 
 function ContextSummary({ currentFile, currentSymbol, activeFlow, activeRisk, selection }: any) {
