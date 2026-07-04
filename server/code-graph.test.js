@@ -67,6 +67,19 @@ test('buildCodeGraph resolves aliased named imports to fact call edges', async (
   assert.equal(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/other.ts')), false);
 });
 
+test('buildCodeGraph resolves namespace imports to fact call edges', async () => {
+  const fixture = await createFixture({
+    'src/index.ts': "import * as order from './order';\nexport function start() {\n  order.runOrder();\n}\n",
+    'src/order.ts': "export function runOrder() {\n  return true;\n}\n",
+    'src/other.ts': "export function runOrder() {\n  return false;\n}\n"
+  });
+
+  const graph = await buildCodeGraph(fixture);
+
+  assert.ok(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/order.ts') && edge.target.includes(':runOrder') && edge.confidence === 'fact'));
+  assert.equal(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/other.ts')), false);
+});
+
 test('buildCodeGraph resolves tsconfig path aliases', async () => {
   const fixture = await createFixture({
     'tsconfig.json': JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } }),

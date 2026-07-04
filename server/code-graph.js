@@ -49,6 +49,7 @@ export async function buildCodeGraph({ root, scan }) {
     if (!sourceFile) continue;
     const imports = extractImports(sourceFile);
     const importBindings = new Map();
+    const namespaceImports = new Map();
     for (const item of imports) {
       const targetPath = importResolver(file.path, item.specifier);
       if (!targetPath) {
@@ -59,16 +60,17 @@ export async function buildCodeGraph({ root, scan }) {
       for (const binding of item.bindings || []) {
         importBindings.set(binding.localName, { targetPath, importedName: binding.importedName });
       }
+      for (const namespace of item.namespaces || []) namespaceImports.set(namespace.localName, targetPath);
     }
 
-    importBindingsByFile.set(file.path, importBindings);
+    importBindingsByFile.set(file.path, { named: importBindings, namespaces: namespaceImports });
 
     const fileSymbols = file.symbols || [];
     for (const symbol of fileSymbols) {
       const source = symbolById.get(symbol.id);
       if (!source) continue;
       for (const call of extractCalls(sourceFile, symbol.startLine, symbol.endLine)) {
-        const target = resolveCallTarget(call.name, file.path, symbol.id, symbolById, symbolsByName, importBindingsByFile.get(file.path));
+        const target = resolveCallTarget(call, file.path, symbol.id, symbolById, symbolsByName, importBindingsByFile.get(file.path));
         if (!target) {
           pushWarning(warnings, { path: file.path, kind: 'unresolved_call', message: `无法解析调用：${call.name}` });
           continue;
@@ -212,7 +214,7 @@ function extractImports(sourceFile) {
   const imports = [];
   walk(sourceFile, (node) => {
     if (ts.isImportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      imports.push({ specifier: node.moduleSpecifier.text, line: nodeLine(sourceFile, node), bindings: extractImportBindings(node) });
+      imports.push({ specifier: node.moduleSpecifier.text, line: nodeLine(sourceFile, node), bindings: extractImportBindings(node), namespaces: extractNamespaceImports(node) });
     }
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
       imports.push({ specifier: node.moduleSpecifier.text, line: nodeLine(sourceFile, node), bindings: [] });
@@ -246,6 +248,12 @@ function extractImportBindings(node) {
     }
   }
   return bindings;
+}
+
+function extractNamespaceImports(node) {
+  const namedBindings = node.importClause?.namedBindings;
+  if (!namedBindings || !ts.isNamespaceImport(namedBindings)) return [];
+  return [{ localName: namedBindings.name.text }];
 }
 
 async function buildImportResolver(root, filePathSet) {
@@ -314,16 +322,21 @@ function extractCalls(sourceFile, startLine, endLine) {
     if (!ts.isCallExpression(node)) return;
     const line = nodeLine(sourceFile, node);
     if (line < startLine || line > endLine) return;
-    const name = callName(node.expression);
-    if (name) calls.push({ name, line });
+    const call = callName(node.expression);
+    if (call) calls.push({ ...call, line });
   });
   return calls;
 }
 
 function callName(expression) {
-  if (ts.isIdentifier(expression)) return expression.text;
-  if (ts.isPropertyAccessExpression(expression)) return expression.name.text;
-  return '';
+  if (ts.isIdentifier(expression)) return { name: expression.text };
+  if (ts.isPropertyAccessExpression(expression)) {
+    return {
+      name: expression.name.text,
+      receiver: ts.isIdentifier(expression.expression) ? expression.expression.text : ''
+    };
+  }
+  return null;
 }
 
 function walk(node, visit) {
@@ -335,8 +348,15 @@ function nodeLine(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 }
 
-function resolveCallTarget(name, fromPath, sourceId, symbolById, symbolsByName, importBindings = new Map()) {
-  const imported = importBindings.get(name);
+function resolveCallTarget(call, fromPath, sourceId, symbolById, symbolsByName, importBindings = {}) {
+  const name = call.name;
+  if (call.receiver && importBindings.namespaces?.has(call.receiver)) {
+    const targetPath = importBindings.namespaces.get(call.receiver);
+    const namespaceCandidates = (symbolsByName.get(name) || [])
+      .filter((node) => node.path === targetPath && node.id !== sourceId);
+    if (namespaceCandidates.length === 1) return { node: namespaceCandidates[0], confidence: 'fact' };
+  }
+  const imported = importBindings.named?.get(name);
   if (imported) {
     const importedCandidates = (symbolsByName.get(imported.importedName) || [])
       .filter((node) => node.path === imported.targetPath && node.id !== sourceId);
