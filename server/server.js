@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import express from 'express';
-import { createServer as createViteServer } from 'vite';
+
 import { fileURLToPath } from 'node:url';
 import { scanProject } from './scanner.js';
 import { readTextFileSafe } from './fs-utils.js';
@@ -19,6 +19,7 @@ import { readExplainCache, recordAskThread, recordCodeGraph, recordExplainCache,
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
 const webRoot = path.join(packageRoot, 'web');
+const webDistRoot = path.join(webRoot, 'dist');
 
 function createServerCache() {
   return {
@@ -256,12 +257,7 @@ export async function startServer({ projectDir, port, host, serveWeb = true }) {
     } catch (error) { next(error); }
   });
 
-  const vite = serveWeb ? await createViteServer({
-    root: webRoot,
-    server: { middlewareMode: true, hmr: { port: port + 1 } },
-    appType: 'spa'
-  }) : null;
-  if (vite) app.use(vite.middlewares);
+  const webApp = serveWeb ? await mountWebApp(app, port) : null;
 
   app.use((err, _req, res, _next) => {
     res.status(500).json({ error: err?.message || String(err) });
@@ -270,11 +266,42 @@ export async function startServer({ projectDir, port, host, serveWeb = true }) {
   return await new Promise((resolve) => {
     const listener = app.listen(port, host, () => {
       listener.on('close', () => {
-        void vite?.close();
+        void webApp?.close?.();
       });
       resolve({ app, listener, port: listener.address().port });
     });
   });
+}
+
+async function mountWebApp(app, port) {
+  const distIndex = path.join(webDistRoot, 'index.html');
+  if (process.env.CODEMAP_AI_DEV_SERVER !== '1' && await pathExists(distIndex)) {
+    app.use(express.static(webDistRoot));
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' || req.path.startsWith('/api/')) return next();
+      return res.sendFile(distIndex);
+    });
+    return null;
+  }
+
+  const { createServer } = await import('vite');
+  const vite = await createServer({
+    root: webRoot,
+    server: { middlewareMode: true, hmr: { port: port + 1 } },
+    appType: 'spa'
+  });
+  app.use(vite.middlewares);
+  return vite;
+}
+
+async function pathExists(targetPath) {
+  try {
+    await fs.access(targetPath);
+    return true;
+  } catch (error) {
+    if (error?.code === 'ENOENT') return false;
+    throw error;
+  }
 }
 
 function buildExplainQuestion(node, mode = 'selected') {
