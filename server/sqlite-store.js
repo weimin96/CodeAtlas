@@ -60,6 +60,13 @@ export async function recordExplainCache(projectDir, { scopeKey, payload }) {
   });
 }
 
+export async function readExplainCache(projectDir, scopeKey) {
+  return readRecord((db) => {
+    const row = db.prepare('SELECT payload FROM explain_cache WHERE id = ?').get(`${projectKey(projectDir)}:${scopeKey}`);
+    return row?.payload ? JSON.parse(row.payload) : null;
+  }, null);
+}
+
 export async function getProjectDatabaseSnapshot(projectDir) {
   return readRecord((db) => {
     const key = projectKey(projectDir);

@@ -4,7 +4,6 @@
 按用户最新清单，把 Code Graph 从“能看”收口到“能用”，并补齐 Explain cache、业务页 Why Connected、Graph-aware Context Pack 和 zip 文档集。
 
 ## 假设
-- 当前工作区干净，最近提交为 `024b8b4 feat: add cytoscape graph canvas`。
 - 每完成一个阶段提交一次。
 - 继续保持 Node/Express/Vite/React 结构，不做包名破坏性迁移。
 - Graph 精度继续限定 JS/TS；已用 TypeScript AST 做提取，但目标解析仍非类型系统级。
@@ -14,7 +13,7 @@
 | 阶段 | 状态 | 内容 | 验证 |
 |---|---|---|---|
 | 23 | complete | Code Graph 可用性收口：范围、过滤、搜索、邻居高亮、业务回链 | typecheck、build、e2e |
-| 24 | pending | Explain cache 真正读写复用：后端缓存 API、AI miss、SQLite write、前端 debounce/cancel | test、typecheck、build |
+| 24 | complete | Explain cache 真正读写复用：后端缓存 API、AI miss、SQLite write、前端 debounce/cancel | test、typecheck、build、lint |
 | 25 | pending | Why Connected 业务入口：模块/链路/风险/代码浏览器解释入口 | typecheck、build |
 | 26 | pending | Graph-aware Context Pack：flow/risk/question 引入 graph 邻居和路径 | test、node --check |
 | 27 | pending | 多文件 zip 文档集：新增 CODE_GRAPH_SUMMARY、ANALYSIS_QUALITY，前端 zip 下载 | test、typecheck、build |

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, SectionTitle, StatCard } from '@/components/PageBlocks';
-import type { CodeGraph, CodeGraphEdge, CodeGraphNode, CoreFlow, FilePayload, Report, RiskItem, SymbolInfo } from '@/types';
+import type { AiConfig, CodeGraph, CodeGraphEdge, CodeGraphNode, CoreFlow, FilePayload, Report, RiskItem, SymbolInfo } from '@/types';
 
 type InspectorTab = 'overview' | 'explain' | 'why' | 'warnings' | 'code';
 type GraphScope = 'all' | 'module' | 'flow' | 'file' | 'symbol';
@@ -16,6 +16,7 @@ type EdgeType = CodeGraphEdge['type'];
 export function CodeGraphPage({
   graph,
   report,
+  config,
   currentFile,
   currentSymbol,
   activeFlow,
@@ -26,6 +27,7 @@ export function CodeGraphPage({
 }: {
   graph: CodeGraph | null;
   report: Report | null;
+  config: AiConfig;
   currentFile: FilePayload | null;
   currentSymbol: SymbolInfo | null;
   activeFlow: CoreFlow | null;
@@ -46,6 +48,7 @@ export function CodeGraphPage({
   const [tab, setTab] = useState<InspectorTab>('overview');
   const [explanation, setExplanation] = useState('');
   const [explainLoading, setExplainLoading] = useState(false);
+  const [explainError, setExplainError] = useState('');
   const explainCacheRef = useRef(new Map<string, string>());
 
   useEffect(() => {
@@ -73,28 +76,43 @@ export function CodeGraphPage({
 
   useEffect(() => {
     if (!selectedNode || tab !== 'explain') return;
-    const cacheKey = `${graph?.generatedAt || 'graph'}:${selectedNode.id}`;
-    const cached = explainCacheRef.current.get(cacheKey);
+    const scopeKey = `${graph?.generatedAt || 'graph'}:${selectedNode.id}`;
+    const cached = explainCacheRef.current.get(scopeKey);
     if (cached) {
       setExplanation(cached);
       setExplainLoading(false);
+      setExplainError('');
       return;
     }
-    let cancelled = false;
+    const controller = new AbortController();
     setExplainLoading(true);
     setExplanation('');
-    const timer = window.setTimeout(() => {
-      if (cancelled) return;
-      const next = buildNodeExplanation({ node: selectedNode, edges: relatedEdges, nodes, warnings: selectedWarnings, businessLinks });
-      explainCacheRef.current.set(cacheKey, next);
-      setExplanation(next);
-      setExplainLoading(false);
+    setExplainError('');
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch('/api/explain-node', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({ scopeKey, node: selectedNode, relatedEdges, warnings: selectedWarnings, businessLinks, config })
+        });
+        const data = await response.json().catch(() => null) as { explanation?: string; error?: string } | null;
+        if (!response.ok || data?.error) throw new Error(data?.error || `解释失败：${response.status}`);
+        const next = data?.explanation || buildNodeExplanation({ node: selectedNode, edges: relatedEdges, nodes, warnings: selectedWarnings, businessLinks });
+        explainCacheRef.current.set(scopeKey, next);
+        setExplanation(next);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        setExplainError(error instanceof Error ? error.message : String(error));
+      } finally {
+        if (!controller.signal.aborted) setExplainLoading(false);
+      }
     }, 600);
     return () => {
-      cancelled = true;
+      controller.abort();
       window.clearTimeout(timer);
     };
-  }, [businessLinks, graph?.generatedAt, nodes, relatedEdges, selectedNode, selectedWarnings, tab]);
+  }, [businessLinks, config, graph?.generatedAt, nodes, relatedEdges, selectedNode, selectedWarnings, tab]);
 
   if (!graph) return <div className="space-y-4">
     <SectionTitle title="代码图谱" description="基于 JS/TS 静态扫描构建文件、符号、导入和调用关系。" />
@@ -165,7 +183,7 @@ export function CodeGraphPage({
         <CardContent>
           {!selectedNode && <EmptyState text="选择左侧节点查看详情" />}
           {selectedNode && tab === 'overview' && <OverviewInspector node={selectedNode} edges={relatedEdges} nodes={nodes} businessLinks={businessLinks} onOpenFile={onOpenFile} />}
-          {selectedNode && tab === 'explain' && <ExplainInspector loading={explainLoading} explanation={explanation} />}
+          {selectedNode && tab === 'explain' && <ExplainInspector loading={explainLoading} explanation={explanation} error={explainError} fallback={() => buildNodeExplanation({ node: selectedNode, edges: relatedEdges, nodes, warnings: selectedWarnings, businessLinks })} />}
           {selectedNode && tab === 'why' && <WhyInspector nodes={nodes} selectedNode={selectedNode} targetNode={targetNode} targetId={targetId} connection={connection} onTargetChange={setTargetId} />}
           {selectedNode && tab === 'warnings' && <WarningsInspector warnings={selectedWarnings} />}
           {selectedNode && tab === 'code' && <CodeInspector node={selectedNode} onOpenFile={onOpenFile} />}
@@ -343,8 +361,12 @@ function WhyInspector({ nodes, selectedNode, targetNode, targetId, connection, o
   </div>;
 }
 
-function ExplainInspector({ loading, explanation }: { loading: boolean; explanation: string }) {
-  if (loading) return <EmptyState text="解释生成中，切换节点会取消旧任务。" />;
+function ExplainInspector({ loading, explanation, error, fallback }: { loading: boolean; explanation: string; error: string; fallback: () => string }) {
+  if (loading) return <EmptyState text="解释生成中，切换节点会取消旧请求。" />;
+  if (error) return <div className="space-y-3">
+    <div className="rounded-xl border border-red-100 bg-red-50 p-4 text-sm leading-6 text-red-800">AI Explain 失败：{error}</div>
+    <div className="rounded-xl border bg-slate-50 p-4 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{fallback()}</div>
+  </div>;
   return <div className="rounded-xl border bg-slate-50 p-4 text-sm leading-6 text-slate-700 whitespace-pre-wrap">{explanation || '暂无解释。'}</div>;
 }
 

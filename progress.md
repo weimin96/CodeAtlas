@@ -7,3 +7,5 @@
 - 阶段 23 开始：目标是补 Code Graph 范围切换、边类型过滤、warning 搜索、邻居高亮和业务回链。
 - 阶段 23 完成：CodeGraphPage 增加 all/module/flow/file/symbol 范围切换、contains/defines/imports/calls/warnings-only 过滤、按文件/函数/模块/warning 搜索、直接/调用方/被调用方/import/2-hop 高亮，以及模块/链路/风险业务回链。
 - 阶段 23 验证通过：tsc --noEmit、vite build、Playwright e2e。
+- 阶段 24 完成：新增 /api/explain-node，先读 SQLite explain_cache，未命中才调用 AI，成功后 recordExplainCache；前端 Explain tab 保留 600ms debounce、AbortController 取消和 session cache，AI 失败时展示本地图谱解释兜底。
+- 阶段 24 验证通过：node --check server/server.js、node --check server/sqlite-store.js、npm run test、tsc --noEmit、vite build、npm run lint。

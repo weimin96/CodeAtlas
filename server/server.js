@@ -14,7 +14,7 @@ import { deleteProjectReport, readProjectReport, writeProjectReport } from './re
 import { buildCodeGraph, findShortestPath } from './code-graph.js';
 import { buildDocumentSet } from './document-exporter.js';
 import { updateVerification } from './verification.js';
-import { recordAskThread, recordCodeGraph, recordReport, recordScanRun, recordVerification } from './sqlite-store.js';
+import { readExplainCache, recordAskThread, recordCodeGraph, recordExplainCache, recordReport, recordScanRun, recordVerification } from './sqlite-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
@@ -203,6 +203,24 @@ export async function startServer({ projectDir, port, host }) {
     } catch (error) { next(error); }
   });
 
+  app.post('/api/explain-node', async (req, res, next) => {
+    try {
+      const { scopeKey, node, relatedEdges = [], warnings = [], businessLinks = {}, config: bodyConfig = {} } = req.body || {};
+      if (!scopeKey) throw new Error('scopeKey is required');
+      if (!node?.id) throw new Error('node is required');
+      const cached = await readExplainCache(projectDir, scopeKey);
+      if (cached?.explanation) return res.json({ cached: true, explanation: cached.explanation, answer: cached.answer || null });
+      const config = await mergeRuntimeConfig(bodyConfig);
+      const question = buildExplainQuestion(node);
+      const context = { node, relatedEdges, warnings, businessLinks };
+      const answer = await askWithAI({ question, context, config });
+      const explanation = formatExplainAnswer(answer);
+      const payload = { explanation, answer, node, relatedEdges, warnings, businessLinks, generatedAt: new Date().toISOString() };
+      await recordExplainCache(projectDir, { scopeKey, payload });
+      res.json({ cached: false, explanation, answer });
+    } catch (error) { next(error); }
+  });
+
   app.post('/api/ask', async (req, res, next) => {
     try {
       const { question, context = {}, config: bodyConfig = {} } = req.body || {};
@@ -231,6 +249,19 @@ export async function startServer({ projectDir, port, host }) {
       resolve({ app, listener, port: listener.address().port });
     });
   });
+}
+
+function buildExplainQuestion(node) {
+  return `请基于代码图谱解释这个节点的职责、直接关系、影响范围、相关模块/链路/风险，以及下一步人工验证动作。节点：${node.name} (${node.type}) ${node.path || ''}`;
+}
+
+function formatExplainAnswer(answer) {
+  return [
+    answer.conclusion ? `结论：${answer.conclusion}` : '',
+    answer.markdown || '',
+    answer.nextSteps?.length ? `下一步：${answer.nextSteps.join('；')}` : '',
+    answer.risks?.length ? `风险：${answer.risks.join('；')}` : ''
+  ].filter(Boolean).join('\n\n');
 }
 
 async function mergeRuntimeConfig(bodyConfig) {
