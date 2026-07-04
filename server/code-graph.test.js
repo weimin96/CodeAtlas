@@ -67,6 +67,19 @@ test('buildCodeGraph resolves aliased named imports to fact call edges', async (
   assert.equal(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/other.ts')), false);
 });
 
+test('buildCodeGraph resolves default imports to default export call edges', async () => {
+  const fixture = await createFixture({
+    'src/index.ts': "import run from './task';\nexport function start() {\n  run();\n}\n",
+    'src/task.ts': "export default () => true;\n",
+    'src/other.ts': "export function run() {\n  return false;\n}\n"
+  });
+
+  const graph = await buildCodeGraph(fixture);
+
+  assert.ok(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/task.ts') && edge.target.includes(':default') && edge.confidence === 'fact'));
+  assert.equal(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/other.ts')), false);
+});
+
 test('buildCodeGraph resolves namespace imports to fact call edges', async () => {
   const fixture = await createFixture({
     'src/index.ts': "import * as order from './order';\nexport function start() {\n  order.runOrder();\n}\n",
