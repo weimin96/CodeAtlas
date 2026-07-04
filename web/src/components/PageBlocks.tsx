@@ -1,25 +1,10 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, CheckCircle2, CircleHelp, Sparkles, TriangleAlert } from 'lucide-react';
+import { ArrowRight, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import type { Confidence, Priority } from '@/types';
-
-export function PageHero({ icon, title, description, aside }: { icon: ReactNode; title: string; description: string; aside?: ReactNode }) {
-  return <Card className="mb-4">
-    <CardContent className="flex items-center justify-between gap-8 p-5">
-      <div className="flex items-center gap-4">
-        <div className="flex h-16 w-16 items-center justify-center rounded-xl bg-blue-600 text-white shadow-sm">{icon}</div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-950">{title}</h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
-        </div>
-      </div>
-      {aside && <div className="shrink-0">{aside}</div>}
-    </CardContent>
-  </Card>;
-}
 
 export function StatCard({ icon, label, value, hint, tone = 'blue' }: { icon: ReactNode; label: string; value: string | number; hint?: string; tone?: 'blue' | 'green' | 'amber' | 'red' | 'slate' | 'purple' }) {
   return <Card>
@@ -68,14 +53,6 @@ export function EmptyState({ text }: { text: string }) {
 
 export function LinkButton({ children, onClick }: { children: ReactNode; onClick?: () => void }) {
   return <Button variant="ghost" size="sm" onClick={onClick} className="h-auto px-0 text-blue-700 hover:bg-transparent hover:underline">{children}<ArrowRight size={14} /></Button>;
-}
-
-export function ReliabilityLegend() {
-  return <div className="flex items-center gap-5 text-sm text-slate-600">
-    <span className="flex items-center gap-2"><CheckCircle2 size={14} className="text-emerald-600" />确定事实</span>
-    <span className="flex items-center gap-2"><Sparkles size={14} className="text-amber-500" />合理推测</span>
-    <span className="flex items-center gap-2"><CircleHelp size={14} className="text-slate-400" />待验证</span>
-  </div>;
 }
 
 export function RiskHint({ children }: { children: ReactNode }) {

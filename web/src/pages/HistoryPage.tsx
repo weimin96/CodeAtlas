@@ -1,11 +1,9 @@
-import { FileClock } from 'lucide-react';
-import { PageHero, SectionTitle } from '@/components/PageBlocks';
+import { SectionTitle } from '@/components/PageBlocks';
 import { Card, CardContent } from '@/components/ui/card';
 import type { Report } from '@/types';
 
 export function HistoryPage({ report }: { report: Report | null }) {
   return <div className="space-y-4">
-    <PageHero icon={<FileClock size={30} />} title="追问历史" description="沉淀围绕项目、模块、链路、风险和代码证据的上下文追问记录。当前版本展示阅读路线和待验证问题，历史持久化将在后续版本增强。" />
     <div className="grid grid-cols-[1fr_380px] gap-4">
       <Card>
         <CardContent className="p-5">

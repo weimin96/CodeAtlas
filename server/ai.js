@@ -5,7 +5,7 @@ import { createOllama } from 'ollama-ai-provider-v2';
 
 export function modelFromConfig(config = {}) {
   const provider = config.provider || process.env.PFO_AI_PROVIDER || 'openai-compatible';
-  const modelName = config.model || process.env.OPENAI_MODEL || process.env.PFO_AI_MODEL || 'gpt-4.1-mini';
+  const modelName = config.model || process.env.OPENAI_MODEL || process.env.PFO_AI_MODEL || defaultModel(provider);
   const apiKey = config.apiKey || process.env.OPENAI_API_KEY || process.env.PFO_AI_API_KEY;
   const baseURL = config.baseURL || process.env.OPENAI_BASE_URL || process.env.PFO_AI_BASE_URL;
 
@@ -20,11 +20,31 @@ export function modelFromConfig(config = {}) {
   }
 
   const compatible = createOpenAICompatible({
-    name: 'openai-compatible',
+    name: provider === 'openai-compatible' || provider === 'custom' ? 'openai-compatible' : provider,
     apiKey,
-    baseURL: baseURL || 'https://api.openai.com/v1'
+    baseURL: baseURL || defaultBaseURL(provider)
   });
   return compatible(modelName);
+}
+
+function defaultModel(provider) {
+  if (provider === 'ollama') return 'qwen2.5-coder:7b';
+  if (provider === 'deepseek') return 'deepseek-v4-flash';
+  if (provider === 'kimi') return 'kimi-k2.7-code';
+  if (provider === 'zhipu') return 'glm-5.1';
+  if (provider === 'siliconflow') return 'Qwen/Qwen3-Coder-480B-A35B-Instruct';
+  if (provider === 'openrouter') return 'anthropic/claude-sonnet-4.5';
+  return 'gpt-4.1-mini';
+}
+
+function defaultBaseURL(provider) {
+  if (provider === 'ollama') return 'http://127.0.0.1:11434/api';
+  if (provider === 'deepseek') return 'https://api.deepseek.com';
+  if (provider === 'kimi') return 'https://api.moonshot.cn/v1';
+  if (provider === 'zhipu') return 'https://open.bigmodel.cn/api/paas/v4';
+  if (provider === 'siliconflow') return 'https://api.siliconflow.cn/v1';
+  if (provider === 'openrouter') return 'https://openrouter.ai/api/v1';
+  return 'https://api.openai.com/v1';
 }
 
 export async function analyzeWithAI({ scan, chunks, contextPack, config }) {

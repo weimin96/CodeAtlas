@@ -15,6 +15,7 @@ import type { FlowStep, SymbolInfo } from '@/types';
 
 export default function App() {
   const [activePage, setActivePage] = useState<PageId>('overview');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const editorRef = useRef<Parameters<OnMount>[0] | null>(null);
   const workbench = useWorkbenchData();
 
@@ -62,6 +63,7 @@ export default function App() {
     onNavigate={setActivePage}
     onAnalyze={workbench.analyze}
     onExportReport={exportContextPack}
+    onOpenSettings={() => setSettingsOpen(true)}
   >
     {activePage === 'overview' && <OverviewPage payload={workbench.payload} report={workbench.report} onNavigate={setActivePage} />}
     {activePage === 'modules' && <ModuleMapPage payload={workbench.payload} report={workbench.report} onNavigate={setActivePage} />}
@@ -69,7 +71,6 @@ export default function App() {
     {activePage === 'data' && <DataModelPage payload={workbench.payload} report={workbench.report} />}
     {activePage === 'risks' && <RiskPage report={workbench.report} onNavigate={setActivePage} />}
     {activePage === 'history' && <HistoryPage report={workbench.report} />}
-    {activePage === 'settings' && <SettingsPage config={workbench.config} loading={workbench.loading} onConfigChange={workbench.setConfig} onSaveConfig={workbench.saveConfig} />}
     {activePage === 'code' && <div className="grid h-[calc(100vh-104px)] grid-cols-[minmax(680px,1fr)_380px] gap-4">
       <CodeWorkspace
         report={workbench.report}
@@ -103,5 +104,6 @@ export default function App() {
         onOpenFile={workbench.openFile}
       />
     </div>}
+    <SettingsPage open={settingsOpen} config={workbench.config} loading={workbench.loading} onOpenChange={setSettingsOpen} onConfigChange={workbench.setConfig} onSaveConfig={workbench.saveConfig} />
   </AppShell>;
 }

@@ -1,23 +1,15 @@
-import { ArrowRight, Boxes, Clock3, Cloud, PlayCircle, ShieldAlert } from 'lucide-react';
+import { ArrowRight, Boxes, Clock3, Cloud, PlayCircle } from 'lucide-react';
 import { ActionItem } from '@/components/common/ActionItem';
 import { MermaidPanel } from '@/components/MermaidPanel';
-import { ConfidenceBadge, EmptyState, LinkButton, PageHero, PriorityBadge, ReliabilityLegend, RiskBadge, SectionTitle, StatCard } from '@/components/PageBlocks';
+import { ConfidenceBadge, EmptyState, LinkButton, PriorityBadge, RiskBadge, SectionTitle, StatCard } from '@/components/PageBlocks';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PageId } from '@/components/AppShell';
 import type { ProjectPayload, Report } from '@/types';
 
 export function OverviewPage({ payload, report, onNavigate }: { payload: ProjectPayload | null; report: Report | null; onNavigate: (page: PageId) => void }) {
   const overview = report?.projectOverview;
-  const projectName = overview?.name || payload?.projectDir?.split(/[\\/]/).filter(Boolean).pop() || '项目加载中';
   const highRisks = report?.risks?.filter((risk) => risk.level === 'high').length || 0;
   return <div className="space-y-4">
-    <PageHero
-      icon={<Boxes size={30} />}
-      title={projectName}
-      description={overview?.summary || '从项目级视角理解系统结构、核心模块、关键链路、数据模型和风险点。'}
-      aside={<ReliabilityLegend />}
-    />
-
     <div className="grid grid-cols-4 gap-4">
       <StatCard icon={<PlayCircle size={22} />} label="启动方式" value={overview?.startup || '待识别'} hint="项目入口与本地运行方式" tone="blue" />
       <StatCard icon={<Boxes size={22} />} label="核心模块" value={report?.modules?.length || 0} hint="已识别模块数量" tone="green" />

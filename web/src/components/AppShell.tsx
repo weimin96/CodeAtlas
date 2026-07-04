@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { ProjectPayload } from '@/types';
 
-export type PageId = 'overview' | 'modules' | 'flows' | 'data' | 'risks' | 'code' | 'history' | 'settings';
+export type PageId = 'overview' | 'modules' | 'flows' | 'data' | 'risks' | 'code' | 'history';
 
 const navItems: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'overview', label: '项目总览', icon: Home },
@@ -13,8 +13,7 @@ const navItems: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'data', label: '数据模型', icon: Database },
   { id: 'risks', label: '风险雷达', icon: ShieldAlert },
   { id: 'code', label: '代码浏览器', icon: Code2 },
-  { id: 'history', label: '追问历史', icon: FileClock },
-  { id: 'settings', label: 'AI 设置', icon: Settings }
+  { id: 'history', label: '追问历史', icon: FileClock }
 ];
 
 export function AppShell({
@@ -24,7 +23,8 @@ export function AppShell({
   children,
   onNavigate,
   onAnalyze,
-  onExportReport
+  onExportReport,
+  onOpenSettings
 }: {
   activePage: PageId;
   payload: ProjectPayload | null;
@@ -33,6 +33,7 @@ export function AppShell({
   onNavigate: (page: PageId) => void;
   onAnalyze: () => void;
   onExportReport: () => void;
+  onOpenSettings: () => void;
 }) {
   return <div className="grid h-screen grid-cols-[220px_1fr] bg-background text-foreground">
     <aside className="flex min-h-0 flex-col border-r bg-white">
@@ -78,6 +79,7 @@ export function AppShell({
           <Button size="sm" variant="outline" onClick={onAnalyze} disabled={!!loading}><RefreshCw size={15} />重新分析</Button>
           <Button size="sm" variant="outline" onClick={onExportReport}><Bot size={15} />导出报告</Button>
           <Button size="sm"><Share2 size={15} />分享项目</Button>
+          <Button size="icon" variant="outline" onClick={onOpenSettings} aria-label="AI 设置" title="AI 设置"><Settings size={16} /></Button>
         </div>
       </header>
       <main className="min-h-0 flex-1 overflow-y-auto px-6 py-5">

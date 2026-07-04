@@ -43,10 +43,24 @@ export async function startServer({ projectDir, port, host }) {
         provider: body.provider || current.provider,
         baseURL: body.baseURL || current.baseURL,
         model: body.model || current.model,
-        apiKey: body.apiKey && body.apiKey !== '********' ? body.apiKey : current.apiKey
+        apiKey: body.apiKey === '********' ? current.apiKey : typeof body.apiKey === 'string' ? body.apiKey : current.apiKey
       };
       const saved = await writeConfig(nextConfig);
       res.json(redactConfig(saved));
+    } catch (error) { next(error); }
+  });
+
+  app.post('/api/config/test', async (req, res, next) => {
+    try {
+      const current = await readConfig();
+      const bodyConfig = req.body?.config || {};
+      const config = {
+        ...current,
+        ...bodyConfig,
+        apiKey: bodyConfig.apiKey === '********' ? current.apiKey : typeof bodyConfig.apiKey === 'string' ? bodyConfig.apiKey : current.apiKey
+      };
+      const result = await testAiConnection(config);
+      res.json(result);
     } catch (error) { next(error); }
   });
 
@@ -151,4 +165,112 @@ export async function startServer({ projectDir, port, host }) {
       resolve({ app, listener, port: listener.address().port });
     });
   });
+}
+
+async function testAiConnection(config) {
+  const provider = config.provider || 'openai-compatible';
+  const baseURL = config.baseURL || defaultBaseURL(provider);
+  const candidates = provider === 'ollama' ? [joinProviderURL(baseURL, 'tags')] : buildModelsURLCandidates(baseURL, providerModelsURL(provider));
+  const headers = provider === 'ollama' ? {} : authHeaders(config.apiKey);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    let lastError = '';
+    for (const target of candidates) {
+      const response = await fetch(target, { headers, signal: controller.signal });
+      if (!response.ok) {
+        const text = await response.text();
+        const message = `${response.status} ${response.statusText}${text ? `: ${truncateBody(text)}` : ''}`;
+        if (response.status === 404 || response.status === 405) {
+          lastError = message;
+          continue;
+        }
+        throw new Error(message);
+      }
+      const data = await response.json().catch((error) => {
+        throw new Error(`Failed to parse response: ${error instanceof Error ? error.message : String(error)}`);
+      });
+      const models = extractModelIds(data);
+      return { ok: true, provider, endpoint: target, modelCount: models.length, models };
+    }
+    throw new Error(`All candidates failed: ${lastError || 'no candidates'}`);
+  } catch (error) {
+    if (error?.name === 'AbortError') throw new Error(`连接超时：${baseURL}`);
+    throw new Error(`连接失败：${error instanceof Error ? error.message : String(error)}`);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+const COMPAT_SUFFIXES = ['/api/claudecode', '/api/anthropic', '/apps/anthropic', '/api/coding', '/claudecode', '/anthropic', '/step_plan', '/coding', '/claude'];
+
+function buildModelsURLCandidates(baseURL, modelsURL) {
+  if (modelsURL) return [modelsURL];
+  const trimmed = String(baseURL || '').trim().replace(/\/+$/, '');
+  if (!trimmed) throw new Error('Base URL 不能为空');
+  const candidates = [];
+  if (endsWithVersionSegment(trimmed)) {
+    candidates.push(`${trimmed}/models`);
+    if (!trimmed.endsWith('/v1')) candidates.push(`${trimmed}/v1/models`);
+  } else {
+    candidates.push(`${trimmed}/v1/models`);
+  }
+  const stripped = stripCompatSuffix(trimmed);
+  if (stripped) {
+    candidates.push(`${stripped}/v1/models`);
+    candidates.push(`${stripped}/models`);
+  }
+  return candidates.filter((url, index) => candidates.indexOf(url) === index);
+}
+
+function providerModelsURL(provider) {
+  if (provider === 'deepseek') return 'https://api.deepseek.com/models';
+  return '';
+}
+
+function endsWithVersionSegment(value) {
+  const last = value.split('/').pop() || '';
+  return /^v\d+$/.test(last);
+}
+
+function stripCompatSuffix(value) {
+  const suffix = COMPAT_SUFFIXES.find((item) => value.endsWith(item));
+  if (!suffix) return '';
+  return value.slice(0, -suffix.length).replace(/\/+$/, '');
+}
+
+function truncateBody(value) {
+  return value.length > 512 ? `${value.slice(0, 512)}…` : value;
+}
+
+function extractModelIds(data) {
+  if (Array.isArray(data?.data)) {
+    return data.data.map((item) => item?.id).filter(Boolean).sort();
+  }
+  if (Array.isArray(data?.models)) {
+    return data.models.map((item) => item?.name || item?.model || item?.id).filter(Boolean).sort();
+  }
+  return [];
+}
+
+function joinProviderURL(baseURL, pathName) {
+  const normalized = String(baseURL || '').trim();
+  if (!normalized) throw new Error('Base URL 不能为空');
+  const base = normalized.endsWith('/') ? normalized : `${normalized}/`;
+  return new URL(pathName, base).toString();
+}
+
+function authHeaders(apiKey) {
+  if (!apiKey) throw new Error('API Key 不能为空');
+  return { Authorization: `Bearer ${apiKey}` };
+}
+
+function defaultBaseURL(provider) {
+  if (provider === 'ollama') return 'http://127.0.0.1:11434/api';
+  if (provider === 'deepseek') return 'https://api.deepseek.com';
+  if (provider === 'kimi') return 'https://api.moonshot.cn/v1';
+  if (provider === 'zhipu') return 'https://open.bigmodel.cn/api/paas/v4';
+  if (provider === 'siliconflow') return 'https://api.siliconflow.cn/v1';
+  if (provider === 'openrouter') return 'https://openrouter.ai/api/v1';
+  return 'https://api.openai.com/v1';
 }

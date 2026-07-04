@@ -1,5 +1,5 @@
-import { Search, ShieldAlert, SlidersHorizontal, TriangleAlert } from 'lucide-react';
-import { PageHero, RiskBadge, SectionTitle, StatCard } from '@/components/PageBlocks';
+import { SlidersHorizontal, TriangleAlert } from 'lucide-react';
+import { RiskBadge, SectionTitle } from '@/components/PageBlocks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -13,20 +13,17 @@ export function RiskPage({ report, onNavigate }: { report: Report | null; onNavi
   const low = risks.filter((risk) => risk.level === 'low').length;
   const selected = risks[0];
   return <div className="space-y-4">
-    <div className="grid grid-cols-[1fr_1.1fr] gap-4">
-      <PageHero icon={<ShieldAlert size={30} />} title="风险雷达" description="从代码静态分析与链路视角识别潜在风险，帮助提前预防线上问题。" aside={<div className="grid grid-cols-4 gap-6 text-center"><Metric label="高风险" value={high} tone="text-red-600" /><Metric label="中风险" value={medium} tone="text-amber-600" /><Metric label="低风险" value={low} tone="text-emerald-600" /><Metric label="待验证" value={report?.unknowns?.length || 0} tone="text-slate-500" /></div>} />
-      <Card>
-        <CardContent className="p-5">
-          <SectionTitle title="风险维度分布" description="按权限、状态流转、幂等、事务、并发、缓存、外部依赖等维度归纳。" />
-          <div className="grid grid-cols-[1fr_1.2fr] gap-4">
-            <div className="flex min-h-48 items-center justify-center rounded-xl border bg-slate-50 text-sm text-muted-foreground">风险雷达图占位</div>
-            <div className="space-y-2 text-sm">
-              {['权限', '状态流转', '幂等', '事务', '并发', '缓存', '外部依赖', '测试覆盖'].map((name, index) => <div key={name} className="flex items-center justify-between rounded-md border px-3 py-2"><span>{name}</span><span><span className="text-red-600">高 {index % 3}</span> / <span className="text-amber-600">中 {index % 2}</span> / <span className="text-emerald-600">低 {index % 4}</span></span></div>)}
-            </div>
+    <Card>
+      <CardContent className="p-5">
+        <SectionTitle title="风险维度分布" description="按权限、状态流转、幂等、事务、并发、缓存、外部依赖等维度归纳。" />
+        <div className="grid grid-cols-[1fr_1.2fr] gap-4">
+          <div className="flex min-h-48 items-center justify-center rounded-xl border bg-slate-50 text-sm text-muted-foreground">风险雷达图占位</div>
+          <div className="space-y-2 text-sm">
+            {['权限', '状态流转', '幂等', '事务', '并发', '缓存', '外部依赖', '测试覆盖'].map((name, index) => <div key={name} className="flex items-center justify-between rounded-md border px-3 py-2"><span>{name}</span><span><span className="text-red-600">高 {index % 3}</span> / <span className="text-amber-600">中 {index % 2}</span> / <span className="text-emerald-600">低 {index % 4}</span></span></div>)}
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <div className="flex items-center justify-between gap-4">
       <div className="flex gap-2">
@@ -67,8 +64,4 @@ export function RiskPage({ report, onNavigate }: { report: Report | null; onNavi
       </Card>
     </div>
   </div>;
-}
-
-function Metric({ label, value, tone }: { label: string; value: number; tone: string }) {
-  return <div><div className={`text-3xl font-bold ${tone}`}>{value}</div><div className="mt-1 text-xs text-muted-foreground">{label}</div></div>;
 }

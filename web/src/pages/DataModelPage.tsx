@@ -1,15 +1,12 @@
-import { Database, FileCode2, GitBranch } from 'lucide-react';
-import { EmptyState, PageHero, SectionTitle, StatCard } from '@/components/PageBlocks';
+import { Database, FileCode2 } from 'lucide-react';
+import { EmptyState, SectionTitle } from '@/components/PageBlocks';
 import { Card, CardContent } from '@/components/ui/card';
 import type { ProjectPayload, Report } from '@/types';
 
 export function DataModelPage({ payload, report }: { payload: ProjectPayload | null; report: Report | null }) {
   const modelFiles = payload?.scan?.files?.filter((file) => /schema|model|entity|dto|prisma|sql/i.test(file.path)).slice(0, 8) || [];
   const entities = modelFiles.flatMap((file) => file.symbols || []).filter((symbol) => ['class', 'interface', 'type'].includes(symbol.kind)).slice(0, 8);
-  const statusNotes = report?.flows?.flatMap((flow) => flow.notes || []).slice(0, 4) || [];
   return <div className="space-y-4">
-    <PageHero icon={<Database size={30} />} title="数据模型" description="聚焦核心实体、关系与状态流转，帮助理解业务数据结构与演变路径。" aside={<div className="grid grid-cols-3 gap-8 text-center"><Mini label="实体数" value={entities.length} /><Mini label="模型文件" value={modelFiles.length} /><Mini label="状态流转" value={statusNotes.length} /></div>} />
-
     <div className="grid grid-cols-[1.2fr_1fr] gap-4">
       <Card>
         <CardContent className="p-5">
@@ -71,8 +68,4 @@ export function DataModelPage({ payload, report }: { payload: ProjectPayload | n
       </Card>
     </div>
   </div>;
-}
-
-function Mini({ label, value }: { label: string; value: number }) {
-  return <div><div className="text-2xl font-bold text-slate-950">{value}</div><div className="mt-1 text-xs text-muted-foreground">{label}</div></div>;
 }

@@ -1,5 +1,5 @@
-import { Box, Boxes, FileCode2, GitBranch, Search, ShieldAlert } from 'lucide-react';
-import { EmptyState, PageHero, PriorityBadge, SectionTitle, StatCard } from '@/components/PageBlocks';
+import { Box, Boxes, FileCode2, Search, ShieldAlert } from 'lucide-react';
+import { EmptyState, PriorityBadge, SectionTitle, StatCard } from '@/components/PageBlocks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,8 +10,6 @@ export function ModuleMapPage({ payload, report, onNavigate }: { payload: Projec
   const modules = report?.modules || [];
   const externalCount = report?.flows?.filter((flow) => flow.externalCalls?.length).length || 0;
   return <div className="space-y-4">
-    <PageHero icon={<GitBranch size={30} />} title="模块地图" description="从模块视角理解系统，查看模块职责、依赖关系与关键文件，快速掌握系统结构。" />
-
     <div className="grid grid-cols-[1.4fr_1fr] gap-4">
       <Card>
         <CardContent className="p-5">

@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Code2, Database, ExternalLink, Route, ShieldCheck } from 'lucide-react';
 import { ActionItem } from '@/components/common/ActionItem';
 import { MermaidPanel } from '@/components/MermaidPanel';
-import { EmptyState, PageHero, PriorityBadge, RiskHint, SectionTitle } from '@/components/PageBlocks';
+import { EmptyState, PriorityBadge, RiskHint, SectionTitle } from '@/components/PageBlocks';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PageId } from '@/components/AppShell';
@@ -17,8 +17,6 @@ export function FlowPage({ report, activeFlow, onSelectFlow, onOpenStep, onNavig
 }) {
   const selected = activeFlow || report?.flows?.[0] || null;
   return <div className="space-y-4">
-    <PageHero icon={<Route size={30} />} title={selected?.name || '核心链路'} description={selected?.trigger || '查看项目中最重要的业务链路、数据读写、外部调用、异常路径和推荐断点。'} aside={selected && <PriorityBadge priority={selected.priority} />} />
-
     <Card>
       <CardContent className="p-5">
         <SectionTitle title="链路图（顺序流 / Mermaid）" description="节点点击可进入代码浏览器中的对应步骤。" action={<Button variant="outline" size="sm" onClick={() => onNavigate('code')}><Code2 size={15} />查看对应代码</Button>} />
