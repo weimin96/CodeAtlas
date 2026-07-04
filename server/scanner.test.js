@@ -1,9 +1,13 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { scanProject } from './scanner.js';
+
+const execFileAsync = promisify(execFile);
 
 async function createProject(files) {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codemap-ai-scan-'));
@@ -38,4 +42,26 @@ test('scanProject supports maxFiles limit', async () => {
   const scan = await scanProject(root, { maxFiles: 2 });
   assert.equal(scan.totalFiles, 2);
   assert.ok(scan.skippedFiles.some((file) => file.reason === 'maxFiles'));
+});
+
+test('scanProject prefers git file candidates when available', async (t) => {
+  try {
+    await execFileAsync('git', ['--version']);
+  } catch (_error) {
+    t.skip('git is not available');
+    return;
+  }
+  const root = await createProject({
+    '.gitignore': 'ignored.ts\n',
+    'tracked.ts': 'export const tracked = true;\n',
+    'untracked.ts': 'export const untracked = true;\n',
+    'ignored.ts': 'export const ignored = true;\n'
+  });
+  await execFileAsync('git', ['init'], { cwd: root });
+  await execFileAsync('git', ['add', '.gitignore', 'tracked.ts'], { cwd: root });
+
+  const scan = await scanProject(root);
+  const paths = scan.files.map((file) => file.path).sort();
+
+  assert.deepEqual(paths, ['.gitignore', 'tracked.ts', 'untracked.ts']);
 });

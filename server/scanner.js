@@ -1,9 +1,13 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import { IGNORE_DIRS, isProbablyText, toPosix, readTextFileSafe } from './fs-utils.js';
 import { canExtractSymbols, extractSymbols } from './symbol-indexer.js';
 import { loadIgnoreRules } from './ignore-rules.js';
 import { buildRepoMap } from './repo-map.js';
+
+const execFileAsync = promisify(execFile);
 
 const ENTRY_PATTERNS = [
   /(^|\/)main\.(ts|js|go|py|rs|java|kt|cs)$/i,
@@ -31,7 +35,8 @@ const CONFIG_NAMES = new Set([
 const DEFAULT_SCAN_OPTIONS = {
   maxDepth: 8,
   maxFiles: 20_000,
-  maxBytesTotal: 512 * 1024 * 1024
+  maxBytesTotal: 512 * 1024 * 1024,
+  useGit: true
 };
 
 const PRIORITY_DIR_KEYWORDS = [
@@ -48,7 +53,8 @@ function normalizeScanOptions(options = {}) {
   return {
     maxDepth: normalizePositiveInteger(options.maxDepth, DEFAULT_SCAN_OPTIONS.maxDepth, 'maxDepth'),
     maxFiles: normalizePositiveInteger(options.maxFiles, DEFAULT_SCAN_OPTIONS.maxFiles, 'maxFiles'),
-    maxBytesTotal: normalizePositiveInteger(options.maxBytesTotal, DEFAULT_SCAN_OPTIONS.maxBytesTotal, 'maxBytesTotal')
+    maxBytesTotal: normalizePositiveInteger(options.maxBytesTotal, DEFAULT_SCAN_OPTIONS.maxBytesTotal, 'maxBytesTotal'),
+    useGit: options.useGit === undefined ? DEFAULT_SCAN_OPTIONS.useGit : Boolean(options.useGit)
   };
 }
 
@@ -84,6 +90,30 @@ function filePriority(relPath) {
   return 'P3';
 }
 
+async function scanGitFiles(root, options, state) {
+  const paths = await listGitCandidateFiles(root);
+  if (!paths.length) return null;
+  const result = [];
+  const dirPaths = new Set();
+  for (const posix of paths) {
+    if (!posix || path.isAbsolute(posix)) continue;
+    const parts = posix.split('/');
+    for (let index = 1; index < parts.length; index += 1) dirPaths.add(parts.slice(0, index).join('/'));
+    await addFileItem(root, posix, parts.length - 1, options, state, result);
+  }
+  const dirs = Array.from(dirPaths).sort().map((dirPath) => ({ path: dirPath, type: 'dir', depth: dirPath.split('/').length - 1, role: guessDirRole(dirPath), priority: guessDirPriority(dirPath) }));
+  return [...dirs, ...result].sort((a, b) => a.path.localeCompare(b.path));
+}
+
+async function listGitCandidateFiles(root) {
+  try {
+    const { stdout } = await execFileAsync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: root, maxBuffer: 20 * 1024 * 1024 });
+    return stdout.split(/\r?\n/).map((item) => toPosix(item.trim())).filter(Boolean);
+  } catch (_error) {
+    return [];
+  }
+}
+
 async function walk(root, dir = '', depth = 0, options = DEFAULT_SCAN_OPTIONS, state = createScanState(), result = [], shouldIgnore = () => false) {
   if (depth > options.maxDepth) {
     state.skippedFiles.push({ path: toPosix(dir) || '.', reason: 'maxDepth' });
@@ -103,37 +133,48 @@ async function walk(root, dir = '', depth = 0, options = DEFAULT_SCAN_OPTIONS, s
       if (!ignored) result.push({ path: posix, type: 'dir', depth, role: guessDirRole(posix), priority: guessDirPriority(posix) });
       await walk(root, rel, depth + 1, options, state, result, shouldIgnore);
     } else if (entry.isFile()) {
-      const absoluteFile = path.join(root, rel);
-      const stat = await fs.stat(absoluteFile);
-      if (state.fileCount >= options.maxFiles) {
-        state.skippedFiles.push({ path: posix, reason: 'maxFiles' });
-        continue;
-      }
-      if (state.bytesTotal + stat.size > options.maxBytesTotal) {
-        state.skippedFiles.push({ path: posix, reason: 'maxBytesTotal' });
-        continue;
-      }
-      state.fileCount += 1;
-      state.bytesTotal += stat.size;
-      const language = languageFromPath(posix);
-      const text = isProbablyText(absoluteFile);
-      const symbols = text && canExtractSymbols(language)
-        ? await extractFileSymbols(root, posix, language, stat.size)
-        : [];
-      result.push({
-        path: posix,
-        type: 'file',
-        depth,
-        size: stat.size,
-        language,
-        text,
-        role: fileRole(posix),
-        priority: filePriority(posix),
-        symbols
-      });
+      await addFileItem(root, posix, depth, options, state, result);
     }
   }
   return result;
+}
+
+async function addFileItem(root, posix, depth, options, state, result) {
+  const absoluteFile = path.join(root, posix);
+  let stat;
+  try {
+    stat = await fs.stat(absoluteFile);
+  } catch (_error) {
+    state.skippedFiles.push({ path: posix, reason: 'missing' });
+    return;
+  }
+  if (!stat.isFile()) return;
+  if (state.fileCount >= options.maxFiles) {
+    state.skippedFiles.push({ path: posix, reason: 'maxFiles' });
+    return;
+  }
+  if (state.bytesTotal + stat.size > options.maxBytesTotal) {
+    state.skippedFiles.push({ path: posix, reason: 'maxBytesTotal' });
+    return;
+  }
+  state.fileCount += 1;
+  state.bytesTotal += stat.size;
+  const language = languageFromPath(posix);
+  const text = isProbablyText(absoluteFile);
+  const symbols = text && canExtractSymbols(language)
+    ? await extractFileSymbols(root, posix, language, stat.size)
+    : [];
+  result.push({
+    path: posix,
+    type: 'file',
+    depth,
+    size: stat.size,
+    language,
+    text,
+    role: fileRole(posix),
+    priority: filePriority(posix),
+    symbols
+  });
 }
 
 async function extractFileSymbols(root, relPath, language, size) {
@@ -177,7 +218,9 @@ export async function scanProject(root, options = {}) {
   const scanOptions = normalizeScanOptions(options);
   const scanState = createScanState();
   const shouldIgnore = await loadIgnoreRules(root);
-  const items = await walk(root, '', 0, scanOptions, scanState, [], shouldIgnore);
+  const items = scanOptions.useGit
+    ? (await scanGitFiles(root, scanOptions, scanState)) || await walk(root, '', 0, scanOptions, scanState, [], shouldIgnore)
+    : await walk(root, '', 0, scanOptions, scanState, [], shouldIgnore);
   const files = items.filter((item) => item.type === 'file');
   const dirs = items.filter((item) => item.type === 'dir');
   const symbols = files.flatMap((file) => file.symbols || []);
