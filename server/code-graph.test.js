@@ -138,6 +138,19 @@ test('buildCodeGraph resolves workspace package exports', async () => {
   assert.ok(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('packages/orders/src/api.ts') && edge.confidence === 'fact'));
 });
 
+test('buildCodeGraph resolves package imports aliases', async () => {
+  const fixture = await createFixture({
+    'package.json': JSON.stringify({ imports: { '#services/*': './src/services/*' } }),
+    'src/index.ts': "import { runOrder } from '#services/order';\nexport function start() {\n  runOrder();\n}\n",
+    'src/services/order.ts': "export function runOrder() {\n  return true;\n}\n"
+  });
+
+  const graph = await buildCodeGraph(fixture);
+
+  assert.ok(graph.edges.some((edge) => edge.source === 'file:src/index.ts' && edge.target === 'file:src/services/order.ts' && edge.type === 'imports'));
+  assert.ok(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/services/order.ts') && edge.confidence === 'fact'));
+});
+
 test('buildCodeGraph resolves tsconfig path aliases', async () => {
   const fixture = await createFixture({
     'tsconfig.json': JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/*': ['src/*'] } } }),

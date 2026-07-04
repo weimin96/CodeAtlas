@@ -276,8 +276,9 @@ function extractNamespaceImports(node) {
 
 async function buildImportResolver(root, filePathSet) {
   const tsconfig = await readTsconfig(root);
+  const packageImports = await readPackageImports(root);
   const workspacePackages = await readWorkspacePackages(root);
-  return (fromPath, specifier) => resolveImportPath(fromPath, specifier, filePathSet, tsconfig, workspacePackages);
+  return (fromPath, specifier) => resolveImportPath(fromPath, specifier, filePathSet, tsconfig, workspacePackages, packageImports);
 }
 
 async function readTsconfig(root) {
@@ -294,8 +295,10 @@ async function readTsconfig(root) {
   }
 }
 
-function resolveImportPath(fromPath, specifier, filePathSet, tsconfig, workspacePackages = new Map()) {
+function resolveImportPath(fromPath, specifier, filePathSet, tsconfig, workspacePackages = new Map(), packageImports = {}) {
   if (specifier.startsWith('.')) return resolveFromBase(path.posix.dirname(fromPath), specifier, filePathSet);
+  const packageImport = resolvePackageImports(specifier, packageImports, filePathSet);
+  if (packageImport) return packageImport;
   for (const candidate of resolveTsconfigPaths(specifier, tsconfig)) {
     const resolved = resolveFromBase('', candidate, filePathSet);
     if (resolved) return resolved;
@@ -304,6 +307,35 @@ function resolveImportPath(fromPath, specifier, filePathSet, tsconfig, workspace
   if (workspaceResolved) return workspaceResolved;
   if (tsconfig.baseUrl) return resolveFromBase(tsconfig.baseUrl, specifier, filePathSet);
   return '';
+}
+
+async function readPackageImports(root) {
+  try {
+    const file = await readTextFileSafe(root, 'package.json', 120_000);
+    const rootPackage = JSON.parse(file.content);
+    return rootPackage.imports && typeof rootPackage.imports === 'object' ? rootPackage.imports : {};
+  } catch (_error) {
+    return {};
+  }
+}
+
+function resolvePackageImports(specifier, importsField, filePathSet) {
+  if (!specifier.startsWith('#')) return '';
+  for (const [pattern, target] of Object.entries(importsField || {})) {
+    const match = matchPathPattern(pattern, specifier);
+    if (match === null) continue;
+    const targetPath = resolvePackageImportTarget(target, match);
+    if (!targetPath) continue;
+    const resolved = resolveFromBase('', targetPath, filePathSet);
+    if (resolved) return resolved;
+  }
+  return '';
+}
+
+function resolvePackageImportTarget(target, match) {
+  if (typeof target === 'string') return target.replace('*', match).replace(/^\.\//, '');
+  if (!target || typeof target !== 'object') return '';
+  return String(target.import || target.default || target.require || target.types || '').replace('*', match).replace(/^\.\//, '');
 }
 
 async function readWorkspacePackages(root) {
