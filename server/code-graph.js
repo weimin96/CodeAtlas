@@ -22,6 +22,8 @@ export async function buildCodeGraph({ root, scan }) {
   const symbolsByName = new Map();
   const importResolver = await buildImportResolver(root, filePathSet);
   const importBindingsByFile = new Map();
+  const reExportBindingsByFile = new Map();
+  const sourceFilesByPath = new Map();
 
   for (const file of files) addDirectoryChain(file.path, nodes, edges, seenNodes, seenEdges);
 
@@ -48,9 +50,11 @@ export async function buildCodeGraph({ root, scan }) {
     const read = await readGraphFile(root, file.path);
     const sourceFile = parseSourceFile(file.path, read.content, warnings);
     if (!sourceFile) continue;
+    sourceFilesByPath.set(file.path, sourceFile);
     const imports = extractImports(sourceFile);
     const importBindings = new Map();
     const namespaceImports = new Map();
+    const reExportBindings = new Map();
     for (const item of imports) {
       const targetPath = importResolver(file.path, item.specifier);
       if (!targetPath) {
@@ -58,20 +62,24 @@ export async function buildCodeGraph({ root, scan }) {
         continue;
       }
       addEdge(edges, seenEdges, fileId(file.path), fileId(targetPath), 'imports', item.line);
-      for (const binding of item.bindings || []) {
-        importBindings.set(binding.localName, { targetPath, importedName: binding.importedName });
-      }
+      for (const binding of item.bindings || []) importBindings.set(binding.localName, { targetPath, importedName: binding.importedName });
       for (const namespace of item.namespaces || []) namespaceImports.set(namespace.localName, targetPath);
+      for (const binding of item.reExports || []) reExportBindings.set(binding.exportedName, { targetPath, importedName: binding.importedName });
     }
 
     importBindingsByFile.set(file.path, { named: importBindings, namespaces: namespaceImports });
+    reExportBindingsByFile.set(file.path, reExportBindings);
+  }
 
+  for (const file of graphFiles) {
+    const sourceFile = sourceFilesByPath.get(file.path);
+    if (!sourceFile) continue;
     const fileSymbols = file.symbols || [];
     for (const symbol of fileSymbols) {
       const source = symbolById.get(symbol.id);
       if (!source) continue;
       for (const call of extractCalls(sourceFile, symbol.startLine, symbol.endLine)) {
-        const target = resolveCallTarget(call, file.path, symbol.id, symbolById, symbolsByName, importBindingsByFile.get(file.path));
+        const target = resolveCallTarget(call, file.path, symbol.id, symbolById, symbolsByName, importBindingsByFile.get(file.path), reExportBindingsByFile);
         if (!target) {
           pushWarning(warnings, { path: file.path, kind: 'unresolved_call', message: `无法解析调用：${call.name}` });
           continue;
@@ -218,7 +226,7 @@ function extractImports(sourceFile) {
       imports.push({ specifier: node.moduleSpecifier.text, line: nodeLine(sourceFile, node), bindings: extractImportBindings(node), namespaces: extractNamespaceImports(node) });
     }
     if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-      imports.push({ specifier: node.moduleSpecifier.text, line: nodeLine(sourceFile, node), bindings: [] });
+      imports.push({ specifier: node.moduleSpecifier.text, line: nodeLine(sourceFile, node), bindings: [], reExports: extractReExportBindings(node) });
     }
     if (ts.isCallExpression(node)) {
       if (ts.isIdentifier(node.expression) && node.expression.text === 'require') {
@@ -232,6 +240,15 @@ function extractImports(sourceFile) {
     }
   });
   return imports;
+}
+
+function extractReExportBindings(node) {
+  const clause = node.exportClause;
+  if (!clause || !ts.isNamedExports(clause)) return [];
+  return clause.elements.map((element) => ({
+    exportedName: element.name.text,
+    importedName: element.propertyName ? element.propertyName.text : element.name.text
+  }));
 }
 
 function extractImportBindings(node) {
@@ -432,7 +449,13 @@ function nodeLine(sourceFile, node) {
   return sourceFile.getLineAndCharacterOfPosition(node.getStart(sourceFile)).line + 1;
 }
 
-function resolveCallTarget(call, fromPath, sourceId, symbolById, symbolsByName, importBindings = {}) {
+function resolveImportedSymbol(imported, sourceId, symbolsByName) {
+  const candidates = (symbolsByName.get(imported.importedName) || [])
+    .filter((node) => node.path === imported.targetPath && node.id !== sourceId);
+  return candidates.length === 1 ? { node: candidates[0], confidence: 'fact' } : null;
+}
+
+function resolveCallTarget(call, fromPath, sourceId, symbolById, symbolsByName, importBindings = {}, reExportBindingsByFile = new Map()) {
   const name = call.name;
   if (call.receiver && importBindings.namespaces?.has(call.receiver)) {
     const targetPath = importBindings.namespaces.get(call.receiver);
@@ -442,9 +465,13 @@ function resolveCallTarget(call, fromPath, sourceId, symbolById, symbolsByName, 
   }
   const imported = importBindings.named?.get(name);
   if (imported) {
-    const importedCandidates = (symbolsByName.get(imported.importedName) || [])
-      .filter((node) => node.path === imported.targetPath && node.id !== sourceId);
-    if (importedCandidates.length === 1) return { node: importedCandidates[0], confidence: 'fact' };
+    const direct = resolveImportedSymbol(imported, sourceId, symbolsByName);
+    if (direct) return direct;
+    const reExported = reExportBindingsByFile.get(imported.targetPath)?.get(imported.importedName);
+    if (reExported) {
+      const throughBarrel = resolveImportedSymbol(reExported, sourceId, symbolsByName);
+      if (throughBarrel) return throughBarrel;
+    }
   }
   const candidates = symbolsByName.get(name) || [];
   const local = candidates.find((node) => node.path === fromPath && node.id !== sourceId);

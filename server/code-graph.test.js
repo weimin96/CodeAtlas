@@ -67,6 +67,20 @@ test('buildCodeGraph resolves aliased named imports to fact call edges', async (
   assert.equal(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/other.ts')), false);
 });
 
+test('buildCodeGraph resolves named re-exports through barrel files', async () => {
+  const fixture = await createFixture({
+    'src/index.ts': "import { runOrder } from './barrel';\nexport function start() {\n  runOrder();\n}\n",
+    'src/barrel.ts': "export { runOrder } from './order';\n",
+    'src/order.ts': "export function runOrder() {\n  return true;\n}\n",
+    'src/other.ts': "export function runOrder() {\n  return false;\n}\n"
+  });
+
+  const graph = await buildCodeGraph(fixture);
+
+  assert.ok(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/order.ts') && edge.target.includes(':runOrder') && edge.confidence === 'fact'));
+  assert.equal(graph.edges.some((edge) => edge.type === 'calls' && edge.source.includes(':start') && edge.target.includes('src/other.ts')), false);
+});
+
 test('buildCodeGraph resolves default imports to default export call edges', async () => {
   const fixture = await createFixture({
     'src/index.ts': "import run from './task';\nexport function start() {\n  run();\n}\n",
