@@ -25,3 +25,5 @@
 - npm Trusted Publishing 要求 npm CLI 11.5.1+ 和 Node 22.14+；release workflow 原先使用 Node 20，应提升发布 job 的 Node 版本。
 - 使用 Trusted Publishing 后不应再向 `npm publish` 注入 `NODE_AUTH_TOKEN`，避免继续走已删除或过期 token。
 - 旧 GitHub Actions secret `NPM_TOKEN` 已删除，`gh secret list` 当前无仓库 secret。
+- GitHub Actions 首次 OIDC 发布运行在 `pnpm install` 阶段失败：Corepack 选择 pnpm 11.9.0，pnpm 因 `esbuild@0.28.1` build script 未批准返回 `ERR_PNPM_IGNORED_BUILDS`。
+- 需要在 `package.json` 和 CI/release workflow 中固定 pnpm 版本，避免 runner 工具链漂移。

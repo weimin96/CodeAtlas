@@ -25,3 +25,5 @@
 - 阶段 38 进行中：release workflow 的发布 Node 版本从 20 提升到 24，并移除 `NODE_AUTH_TOKEN` 注入，保留 `id-token: write` 和 `npm publish --access public --provenance`。
 - 阶段 38 验证中：`npm run release:dry-run` 通过；release workflow 已确认不再引用 `secrets.NPM_TOKEN`。
 - 已删除旧 GitHub Actions `NPM_TOKEN` secret；`gh secret list` 当前无仓库 secret。
+- 首次 GitHub Actions 发布运行 `28703893271` 失败在 `pnpm install --frozen-lockfile`，原因是 pnpm 11.9.0 的 ignored builds 策略拦截 `esbuild@0.28.1`。
+- 已固定 `packageManager` 为 `pnpm@10.24.0`，并在 CI/release workflows 中显式 prepare 该 pnpm 版本。

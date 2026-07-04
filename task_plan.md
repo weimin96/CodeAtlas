@@ -65,3 +65,4 @@
 | 阶段 37 `npm publish` 返回 E403 | npm 要求 2FA OTP，或使用启用了 bypass 2FA 的 granular/automation token；当前 token 只能通过 `npm whoami`，不能完成发布 |
 | 阶段 38 需要区分 npm GitHub 账号关联与包级 Trusted Publisher | 按 npm Trusted Publishing 要求配置 workflow，发布结果以 GitHub Actions OIDC 运行为准 |
 | 阶段 38 首次 `gh secret delete` 使用了当前 gh 版本不支持的 `--yes` / `--repo` | 改为在当前仓库上下文删除 Actions secret |
+| 阶段 38 首次 GitHub Actions 发布在依赖安装阶段失败 | Corepack 选择 pnpm 11.9.0，因 `esbuild` build script 未批准导致 `ERR_PNPM_IGNORED_BUILDS`；改为固定 pnpm 10.24.0 |
