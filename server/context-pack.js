@@ -7,6 +7,9 @@ const CONTEXT_MODES = new Set(['overview', 'module', 'flow', 'risk', 'question']
 const SENSITIVE_PATH_PATTERN = /(^|\/)\.env($|[./])|(^|\/)(id_rsa|id_dsa|id_ecdsa|id_ed25519)$|\.(pem|p12|pfx|key)$/i;
 const SECRET_PATTERNS = [
   { kind: 'private_key', pattern: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/ },
+  { kind: 'aws_access_key_id', pattern: /\bA(?:KIA|SIA)[A-Z0-9]{16}\b/ },
+  { kind: 'github_token', pattern: /\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9_]{36,}\b/ },
+  { kind: 'slack_token', pattern: /\bxox[baprs]-[A-Za-z0-9-]{20,}\b/ },
   { kind: 'jwt', pattern: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
   { kind: 'credential_assignment', pattern: /(?:api[_-]?key|secret|token|password|passwd|pwd)\s*[:=]\s*['"]?[A-Za-z0-9_./+=-]{16,}/i }
 ];

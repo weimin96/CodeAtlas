@@ -56,6 +56,9 @@ test('selectContextFiles uses graph context scores', () => {
 
 test('detectSecretRisk flags sensitive paths and credential-like content', () => {
   assert.equal(detectSecretRisk({ path: '.env', content: '' }).kind, 'sensitive_path');
+  assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'accessKey = "AKIAABCDEFGHIJKLMNOP"' }).kind, 'aws_access_key_id');
+  assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'token = "ghp_' + 'a'.repeat(36) + '"' }).kind, 'github_token');
+  assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'token = "xoxb-' + '1'.repeat(10) + '-' + '2'.repeat(20) + '"' }).kind, 'slack_token');
   assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'serviceToken = ' + 'x'.repeat(32) }).kind, 'credential_assignment');
   assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'export const name = "demo";' }), null);
 });
