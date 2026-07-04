@@ -7,3 +7,5 @@
 - 阶段 29 验证通过：tsc --noEmit、vite build、npm run lint。
 - 阶段 30 完成：首页“分析质量”新增未解析 import、未解析 call、parse error、跳过大文件四项指标，合并 report.analysisQuality 与已加载 Code Graph warnings。
 - 阶段 30 验证通过：tsc --noEmit、vite build、npm run lint。
+- 阶段 31 完成：图谱画布新增显示范围选择器（当前过滤结果、当前模块、当前链路、当前文件、全项目 Top 140）和排序依据（重要性、风险相关、入口相关、调用度、最近搜索），并在画布说明中解释节点/边数量限制。
+- 阶段 31 验证通过：tsc --noEmit、vite build、Playwright e2e。

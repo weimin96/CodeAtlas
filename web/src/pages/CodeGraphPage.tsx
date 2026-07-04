@@ -12,6 +12,8 @@ type InspectorTab = ObjectInspectorTab;
 type GraphScope = 'all' | 'module' | 'flow' | 'file' | 'symbol';
 type SearchKind = 'all' | 'file' | 'function' | 'module' | 'warning';
 type NeighborMode = 'direct' | 'callers' | 'callees' | 'imports' | 'two-hop';
+type CanvasRange = 'current' | 'module' | 'flow' | 'file' | 'top';
+type CanvasSort = 'importance' | 'risk' | 'entry' | 'degree' | 'search';
 type EdgeType = CodeGraphEdge['type'];
 
 export function CodeGraphPage({
@@ -44,6 +46,8 @@ export function CodeGraphPage({
   const [neighborMode, setNeighborMode] = useState<NeighborMode>('direct');
   const [edgeTypes, setEdgeTypes] = useState<Record<EdgeType, boolean>>({ contains: true, defines: true, imports: true, calls: true });
   const [warningsOnly, setWarningsOnly] = useState(false);
+  const [canvasRange, setCanvasRange] = useState<CanvasRange>('current');
+  const [canvasSort, setCanvasSort] = useState<CanvasSort>('importance');
   const [selectedId, setSelectedId] = useState('');
   const [targetId, setTargetId] = useState('');
   const [tab, setTab] = useState<InspectorTab>('overview');
@@ -74,6 +78,7 @@ export function CodeGraphPage({
   const connection = selectedNode && targetNode ? shortestPath(edges, selectedNode.id, targetNode.id) : [];
   const highlightNodeIds = selectedNode ? neighborIds(edges, selectedNode.id, neighborMode) : new Set<string>();
   const businessLinks = selectedNode ? buildBusinessLinks(selectedNode, report, activeFlow, activeRisk) : { modules: [], flows: [], risks: [] };
+  const canvasGraph = useMemo(() => graph ? buildCanvasGraph({ graph, filteredNodes: nodes, filteredEdges: edges, report, activeFlow, currentFile, query, range: canvasRange, sort: canvasSort }) : { nodes, edges } as { nodes: CodeGraphNode[]; edges: CodeGraphEdge[] }, [activeFlow, canvasRange, canvasSort, currentFile, edges, graph, nodes, query, report]);
 
   useEffect(() => {
     if (!selectedNode || tab !== 'explain') return;
@@ -149,9 +154,13 @@ export function CodeGraphPage({
       onToggleEdge={(type) => setEdgeTypes((current) => ({ ...current, [type]: !current[type] }))}
       onWarningsOnlyChange={setWarningsOnly}
       onNeighborModeChange={setNeighborMode}
+      canvasRange={canvasRange}
+      canvasSort={canvasSort}
+      onCanvasRangeChange={setCanvasRange}
+      onCanvasSortChange={setCanvasSort}
     />
 
-    <GraphCanvas nodes={nodes} edges={edges} selectedId={selectedNode?.id || ''} highlightNodeIds={highlightNodeIds} onSelect={setSelectedId} />
+    <GraphCanvas nodes={canvasGraph.nodes} edges={canvasGraph.edges} selectedId={selectedNode?.id || ''} highlightNodeIds={highlightNodeIds} range={canvasRange} sort={canvasSort} onSelect={setSelectedId} />
 
     <div className="grid gap-4 lg:grid-cols-[420px,1fr]">
       <Card>
@@ -192,7 +201,7 @@ export function CodeGraphPage({
   </div>;
 }
 
-function GraphControls({ report, scope, moduleId, query, searchKind, edgeTypes, warningsOnly, neighborMode, onScopeChange, onModuleChange, onQueryChange, onSearchKindChange, onToggleEdge, onWarningsOnlyChange, onNeighborModeChange }: {
+function GraphControls({ report, scope, moduleId, query, searchKind, edgeTypes, warningsOnly, neighborMode, canvasRange, canvasSort, onScopeChange, onModuleChange, onQueryChange, onSearchKindChange, onToggleEdge, onWarningsOnlyChange, onNeighborModeChange, onCanvasRangeChange, onCanvasSortChange }: {
   report: Report | null;
   scope: GraphScope;
   moduleId: string;
@@ -201,6 +210,8 @@ function GraphControls({ report, scope, moduleId, query, searchKind, edgeTypes, 
   edgeTypes: Record<EdgeType, boolean>;
   warningsOnly: boolean;
   neighborMode: NeighborMode;
+  canvasRange: CanvasRange;
+  canvasSort: CanvasSort;
   onScopeChange: (scope: GraphScope) => void;
   onModuleChange: (id: string) => void;
   onQueryChange: (value: string) => void;
@@ -208,9 +219,11 @@ function GraphControls({ report, scope, moduleId, query, searchKind, edgeTypes, 
   onToggleEdge: (type: EdgeType) => void;
   onWarningsOnlyChange: (value: boolean) => void;
   onNeighborModeChange: (mode: NeighborMode) => void;
+  onCanvasRangeChange: (range: CanvasRange) => void;
+  onCanvasSortChange: (sort: CanvasSort) => void;
 }) {
   return <Card>
-    <CardContent className="grid gap-4 p-4 lg:grid-cols-[1.2fr_1fr_1fr]">
+    <CardContent className="grid gap-4 p-4 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
       <div className="space-y-2">
         <div className="text-xs font-medium text-slate-500">范围切换</div>
         <div className="flex flex-wrap gap-2">
@@ -235,6 +248,23 @@ function GraphControls({ report, scope, moduleId, query, searchKind, edgeTypes, 
         </select>
       </div>
       <div className="space-y-2">
+        <div className="text-xs font-medium text-slate-500">画布显示</div>
+        <select value={canvasRange} onChange={(event) => onCanvasRangeChange(event.target.value as CanvasRange)} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
+          <option value="current">当前过滤结果</option>
+          <option value="module">当前模块</option>
+          <option value="flow">当前链路</option>
+          <option value="file">当前文件</option>
+          <option value="top">全项目 Top 140</option>
+        </select>
+        <select value={canvasSort} onChange={(event) => onCanvasSortChange(event.target.value as CanvasSort)} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
+          <option value="importance">重要性</option>
+          <option value="risk">风险相关</option>
+          <option value="entry">入口相关</option>
+          <option value="degree">调用度</option>
+          <option value="search">最近搜索</option>
+        </select>
+      </div>
+      <div className="space-y-2">
         <div className="text-xs font-medium text-slate-500">搜索</div>
         <select value={searchKind} onChange={(event) => onSearchKindChange(event.target.value as SearchKind)} className="h-9 w-full rounded-md border bg-white px-3 text-sm">
           <option value="all">全部</option>
@@ -249,7 +279,7 @@ function GraphControls({ report, scope, moduleId, query, searchKind, edgeTypes, 
   </Card>;
 }
 
-function GraphCanvas({ nodes, edges, selectedId, highlightNodeIds, onSelect }: { nodes: CodeGraphNode[]; edges: CodeGraphEdge[]; selectedId: string; highlightNodeIds: Set<string>; onSelect: (id: string) => void }) {
+function GraphCanvas({ nodes, edges, selectedId, highlightNodeIds, range, sort, onSelect }: { nodes: CodeGraphNode[]; edges: CodeGraphEdge[]; selectedId: string; highlightNodeIds: Set<string>; range: CanvasRange; sort: CanvasSort; onSelect: (id: string) => void }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<any>(null);
   const elements = useMemo(() => {
@@ -286,7 +316,7 @@ function GraphCanvas({ nodes, edges, selectedId, highlightNodeIds, onSelect }: {
     <CardHeader><CardTitle className="text-base">交互图谱</CardTitle></CardHeader>
     <CardContent>
       <div ref={containerRef} className="h-[420px] rounded-xl border bg-slate-50" />
-      <div className="mt-3 text-xs text-slate-500">显示前 140 个非目录节点和 260 条关系；支持缩放、拖拽、节点点击、邻居高亮与 Inspector 联动。</div>
+      <div className="mt-3 text-xs text-slate-500">当前画布：{canvasRangeLabel(range)} / {canvasSortLabel(sort)}；最多显示 140 个非目录节点和 260 条关系，避免大项目首屏过载。</div>
     </CardContent>
   </Card>;
 }
@@ -423,6 +453,60 @@ function PathRow({ item, nodes }: { item: { from: string; to: string; edge: Code
     <div className="font-medium text-slate-950">{from?.name || item.from} → {to?.name || item.to}</div>
     <div className="mt-1 text-xs text-slate-500">关系：{item.edge.type}</div>
   </div>;
+}
+
+function buildCanvasGraph({ graph, filteredNodes, filteredEdges, report, activeFlow, currentFile, query, range, sort }: {
+  graph: CodeGraph;
+  filteredNodes: CodeGraphNode[];
+  filteredEdges: CodeGraphEdge[];
+  report: Report | null;
+  activeFlow: CoreFlow | null;
+  currentFile: FilePayload | null;
+  query: string;
+  range: CanvasRange;
+  sort: CanvasSort;
+}) {
+  let nodes = filteredNodes;
+  if (range === 'top') nodes = graph.nodes.filter((node) => node.type !== 'directory');
+  if (range === 'module') {
+    const paths = new Set((report?.modules?.[0]?.paths || []));
+    nodes = graph.nodes.filter((node) => node.path && Array.from(paths).some((path) => node.path === path || node.path?.startsWith(`${path}/`)));
+  }
+  if (range === 'flow') {
+    const paths = flowPaths(activeFlow);
+    nodes = graph.nodes.filter((node) => node.path && paths.has(node.path));
+  }
+  if (range === 'file') nodes = graph.nodes.filter((node) => node.path && currentFile?.path && node.path === currentFile.path);
+  const degree = degreeMap(graph.edges || []);
+  const sorted = [...nodes].sort((a, b) => canvasScore(b, { sort, degree, report, query }) - canvasScore(a, { sort, degree, report, query }) || a.name.localeCompare(b.name));
+  const selectedNodes = sorted.slice(0, 140);
+  const ids = new Set(selectedNodes.map((node) => node.id));
+  const sourceEdges = range === 'current' ? filteredEdges : graph.edges;
+  const edges = sourceEdges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)).slice(0, 260);
+  return { nodes: selectedNodes, edges };
+}
+
+function degreeMap(edges: CodeGraphEdge[]) {
+  const map = new Map<string, number>();
+  for (const edge of edges) {
+    map.set(edge.source, (map.get(edge.source) || 0) + 1);
+    map.set(edge.target, (map.get(edge.target) || 0) + 1);
+  }
+  return map;
+}
+
+function canvasScore(node: CodeGraphNode, { sort, degree, report, query }: { sort: CanvasSort; degree: Map<string, number>; report: Report | null; query: string }) {
+  const path = node.path || '';
+  if (sort === 'degree') return degree.get(node.id) || 0;
+  if (sort === 'risk') return (report?.risks || []).some((risk) => risk.path === path || risk.evidence?.some((item) => item.path === path)) ? 100 : 0;
+  if (sort === 'entry') return /route|controller|handler|server|main|index|cli|bin\//i.test(path) ? 100 : 0;
+  if (sort === 'search') return query && `${node.name} ${path}`.toLowerCase().includes(query.toLowerCase()) ? 100 : 0;
+  return importanceScore(node, degree);
+}
+
+function importanceScore(node: CodeGraphNode, degree: Map<string, number>) {
+  const base = node.type === 'file' ? 40 : ['function', 'method', 'class'].includes(node.type) ? 30 : 10;
+  return base + (degree.get(node.id) || 0) * 4;
 }
 
 function filterGraph({ graph, report, scope, moduleId, activeFlow, activeRisk, currentFile, currentSymbol, query, searchKind, edgeTypes, warningsOnly }: {
@@ -624,5 +708,13 @@ function buildNodeExplanation({ node, edges, nodes, warnings, businessLinks }: {
 
 function scopeLabel(scope: GraphScope) {
   return ({ all: '全项目', module: '当前模块', flow: '当前链路', file: '当前文件', symbol: '当前函数' })[scope];
+}
+
+function canvasRangeLabel(range: CanvasRange) {
+  return ({ current: '当前过滤结果', module: '当前模块', flow: '当前链路', file: '当前文件', top: '全项目 Top 140' })[range];
+}
+
+function canvasSortLabel(sort: CanvasSort) {
+  return ({ importance: '重要性', risk: '风险相关', entry: '入口相关', degree: '调用度', search: '最近搜索' })[sort];
 }
 
