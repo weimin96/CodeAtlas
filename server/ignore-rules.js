@@ -11,7 +11,7 @@ export async function loadIgnoreRules(root) {
     if (!content) continue;
     rules.push(...parseIgnoreRules(content));
   }
-  return (relPath, isDirectory = false) => {
+  const matcher = (relPath, isDirectory = false) => {
     const normalized = toPosix(relPath).replace(/^\.\//, '');
     let ignored = false;
     for (const rule of rules) {
@@ -19,6 +19,8 @@ export async function loadIgnoreRules(root) {
     }
     return ignored;
   };
+  matcher.shouldDescend = (relPath) => hasNegatedChildRule(rules, toPosix(relPath).replace(/^\.\//, ''));
+  return matcher;
 }
 
 async function readIgnoreFile(root, file) {
@@ -46,6 +48,10 @@ function parseIgnoreRules(content) {
       return { pattern, negated, anchored, directoryOnly, hasSlash: pattern.includes('/'), hasGlob: /[*?[]/.test(pattern) };
     })
     .filter((rule) => rule.pattern);
+}
+
+function hasNegatedChildRule(rules, relPath) {
+  return rules.some((rule) => rule.negated && rule.pattern.startsWith(`${relPath}/`));
 }
 
 function matchesRule(rule, relPath, isDirectory) {

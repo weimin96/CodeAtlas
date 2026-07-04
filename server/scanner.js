@@ -65,13 +65,14 @@ async function walk(root, dir = '', depth = 0, maxDepth = 8, result = [], should
   const entries = await readDirectoryEntries(absolute, dir || '.');
   entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
   for (const entry of entries) {
-    if (IGNORE_DIRS.has(entry.name)) continue;
     const rel = path.join(dir, entry.name);
     const posix = toPosix(rel);
-    if (shouldIgnore(posix, entry.isDirectory())) continue;
+    const ignored = IGNORE_DIRS.has(entry.name) || shouldIgnore(posix, entry.isDirectory());
+    const shouldDescend = ignored && entry.isDirectory() && shouldIgnore.shouldDescend?.(posix);
+    if (ignored && !shouldDescend) continue;
     if (entry.isSymbolicLink()) continue;
     if (entry.isDirectory()) {
-      result.push({ path: posix, type: 'dir', depth, role: guessDirRole(posix), priority: guessDirPriority(posix) });
+      if (!ignored) result.push({ path: posix, type: 'dir', depth, role: guessDirRole(posix), priority: guessDirPriority(posix) });
       await walk(root, rel, depth + 1, maxDepth, result, shouldIgnore);
     } else if (entry.isFile()) {
       const absoluteFile = path.join(root, rel);
