@@ -65,7 +65,7 @@ async function runPack(argv) {
     .name('codemap-ai pack')
     .description('Build an AI-friendly context pack without starting the web UI')
     .argument('[projectDir]', 'project folder to inspect', '.')
-    .option('--format <format>', 'output format: markdown or json', 'markdown')
+    .option('--format <format>', 'output format: markdown, json or xml', 'markdown')
     .option('--max-chars <chars>', 'maximum context characters', '120000')
     .option('--max-files <count>', 'maximum files to scan before building the pack')
     .option('--max-depth <depth>', 'maximum directory depth for filesystem fallback scanning')
@@ -80,7 +80,7 @@ async function runPack(argv) {
 
   const opts = packProgram.opts();
   const format = String(opts.format || 'markdown').toLowerCase();
-  if (!['markdown', 'json'].includes(format)) throw new Error('Invalid pack --format value.');
+  if (!['markdown', 'json', 'xml'].includes(format)) throw new Error('Invalid pack --format value.');
   const maxChars = parsePositiveNumber(opts.maxChars, 'pack --max-chars');
   const scanOptions = {
     maxFiles: opts.maxFiles === undefined ? undefined : parsePositiveNumber(opts.maxFiles, 'pack --max-files'),
@@ -104,9 +104,12 @@ async function runPack(argv) {
       includeDiffs: Boolean(opts.includeDiffs),
       includeLogs: Boolean(opts.includeLogs)
     });
+    const packJson = buildPackJson({ projectDir, source: workspace.source, scan, codeGraph, contextPack, gitContext });
     const output = format === 'json'
-      ? JSON.stringify(buildPackJson({ projectDir, source: workspace.source, scan, codeGraph, contextPack, gitContext }), null, 2)
-      : appendGitContextMarkdown(contextPack.markdown, gitContext);
+      ? JSON.stringify(packJson, null, 2)
+      : format === 'xml'
+        ? buildPackXml(packJson)
+        : appendGitContextMarkdown(contextPack.markdown, gitContext);
 
     if (outputPath) {
       await fs.mkdir(path.dirname(outputPath), { recursive: true });
@@ -252,6 +255,48 @@ function appendGitContextMarkdown(markdown, gitContext) {
   if (gitContext.log) lines.push('### Recent Log', '', '```text', gitContext.log, '```', '');
   if (gitContext.diff) lines.push('### Current Diff', '', '```diff', gitContext.diff, '```', '');
   return lines.join('\n');
+}
+
+function buildPackXml(pack) {
+  const lines = [
+    '<?xml version="1.0" encoding="UTF-8"?>',
+    '<codemapPack>',
+    `  <source type="${escapeXml(pack.source?.type || 'local')}">${escapeXml(pack.source?.value || pack.projectDir)}</source>`,
+    `  <projectDir>${escapeXml(pack.projectDir)}</projectDir>`,
+    `  <generatedAt>${escapeXml(pack.generatedAt)}</generatedAt>`,
+    '  <summary>',
+    `    <totalFiles>${pack.scan.totalFiles}</totalFiles>`,
+    `    <totalDirs>${pack.scan.totalDirs}</totalDirs>`,
+    `    <totalSymbols>${pack.scan.totalSymbols}</totalSymbols>`,
+    `    <selectedFiles>${pack.contextPack.files.length}</selectedFiles>`,
+    `    <skippedFiles>${pack.contextPack.skippedFiles.length}</skippedFiles>`,
+    '  </summary>',
+    '  <files>'
+  ];
+  for (const file of pack.contextPack.chunks) {
+    lines.push(
+      `    <file path="${escapeXml(file.path)}" language="${escapeXml(file.language || '')}" estimatedTokens="${file.estimatedTokens || 0}" truncated="${Boolean(file.truncated)}">`,
+      `      <content><![CDATA[${escapeCdata(file.content || '')}]]></content>`,
+      '    </file>'
+    );
+  }
+  lines.push('  </files>');
+  if (pack.git?.log || pack.git?.diff) {
+    lines.push('  <git>');
+    if (pack.git.log) lines.push(`    <log><![CDATA[${escapeCdata(pack.git.log)}]]></log>`);
+    if (pack.git.diff) lines.push(`    <diff><![CDATA[${escapeCdata(pack.git.diff)}]]></diff>`);
+    lines.push('  </git>');
+  }
+  lines.push('</codemapPack>');
+  return `${lines.join('\n')}\n`;
+}
+
+function escapeXml(value) {
+  return String(value ?? '').replace(/[<>&"']/g, (char) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[char]);
+}
+
+function escapeCdata(value) {
+  return String(value ?? '').replaceAll(']]>', ']]]]><![CDATA[>');
 }
 
 function buildPackJson({ projectDir, source = { type: 'local', value: projectDir }, scan, codeGraph, contextPack, gitContext = {} }) {
