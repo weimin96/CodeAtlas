@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Bot, Boxes, BrainCircuit, Code2, Database, FileClock, FileText, Home, Map, RefreshCw, Route, Settings, Share2, ShieldAlert, Sparkles, SquareCode } from 'lucide-react';
+import { Bot, Boxes, BrainCircuit, Code2, Database, FileClock, FileText, Home, Map, RefreshCw, Route, Settings, ShieldAlert, Sparkles, SquareCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StepProgress, type ProgressStep } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
@@ -45,58 +45,49 @@ export function AppShell({
   onExportReport: () => void;
   onOpenSettings: () => void;
 }) {
-  return <div className="grid h-screen grid-cols-[220px_1fr] bg-background text-foreground">
-    <aside className="flex min-h-0 flex-col border-r bg-white">
-      <div className="flex h-16 items-center gap-3 border-b px-5">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white"><SquareCode size={17} /></div>
-        <div className="text-sm font-bold">项目快速接管工作台</div>
-      </div>
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const active = item.id === activePage;
-          return <Button
-            key={item.id}
-            type="button"
-            variant="ghost"
-            onClick={() => onNavigate(item.id)}
-            className={cn('h-11 w-full justify-start gap-3 rounded-lg px-3 text-sm shadow-none', active ? 'bg-blue-50 font-semibold text-blue-700 hover:bg-blue-50 hover:text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}
-          >
-            <Icon size={18} />
-            <span>{item.label}</span>
-          </Button>;
-        })}
-      </nav>
-      <div className="border-t p-4">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-600 text-sm font-semibold text-white">U</div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold">用户</div>
-            <div className="text-xs text-muted-foreground">团队成员</div>
+  return <div className="flex h-screen flex-col bg-background text-foreground">
+    <header className="flex h-16 items-center justify-between border-b bg-white px-6">
+      <div className="flex min-w-0 items-center gap-4">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white"><SquareCode size={18} /></div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-3">
+            <h1 className="truncate text-base font-bold text-slate-950">{projectName(payload)}</h1>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{payload?.report?.projectOverview?.type || '待识别'}</span>
+          </div>
+          <div className="mt-1 flex min-w-0 items-center gap-4 text-xs text-slate-500">
+            <span className="max-w-[520px] truncate">{payload?.projectDir || '项目加载中'}</span>
+            <span className="hidden lg:inline">最近分析：{payload?.scan?.repoMap?.generatedAt ? formatDate(payload.scan.repoMap.generatedAt) : '-'}</span>
           </div>
         </div>
       </div>
-    </aside>
+      <div className="flex shrink-0 items-center gap-2">
+        <Button size="sm" variant="outline" onClick={onAnalyze} disabled={!!loading}>{hasAiAnalysis ? <RefreshCw size={15} /> : <Sparkles size={15} />}{hasAiAnalysis ? '重新分析' : '开始分析'}</Button>
+        <Button size="sm" variant="outline" onClick={onExportReport}><Bot size={15} />导出上下文</Button>
+        <Button size="icon" variant="outline" onClick={onOpenSettings} aria-label="AI 设置" title="AI 设置"><Settings size={16} /></Button>
+      </div>
+    </header>
 
-    <div className="flex min-h-0 flex-col">
-      <header className="flex h-16 items-center justify-between border-b bg-white px-6">
-        <div className="flex min-w-0 items-center gap-5 text-sm text-slate-600">
-          <span>项目名称：<strong className="font-semibold text-slate-900">{projectName(payload)}</strong></span>
-          <span className="hidden max-w-[420px] truncate lg:inline">项目路径：{payload?.projectDir || '-'}</span>
-          <span className="hidden xl:inline">最近分析时间：{payload?.scan?.repoMap?.generatedAt ? formatDate(payload.scan.repoMap.generatedAt) : '-'}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={onAnalyze} disabled={!!loading}>{hasAiAnalysis ? <RefreshCw size={15} /> : <Sparkles size={15} />}{hasAiAnalysis ? '重新分析' : '开始分析'}</Button>
-          <Button size="sm" variant="outline" onClick={onExportReport}><Bot size={15} />导出报告</Button>
-          <Button size="sm"><Share2 size={15} />分享项目</Button>
-          <Button size="icon" variant="outline" onClick={onOpenSettings} aria-label="AI 设置" title="AI 设置"><Settings size={16} /></Button>
-        </div>
-      </header>
-      <StepProgress steps={analyzeSteps} active={loading === 'analyze'} />
-      <main className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
-        {children}
-      </main>
-    </div>
+    <nav className="flex h-14 items-center gap-2 border-b bg-white px-6">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const active = item.id === activePage;
+        return <Button
+          key={item.id}
+          type="button"
+          variant="ghost"
+          onClick={() => onNavigate(item.id)}
+          className={cn('h-9 gap-2 rounded-lg px-3 text-sm shadow-none', active ? 'bg-blue-50 font-semibold text-blue-700 hover:bg-blue-50 hover:text-blue-700' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900')}
+        >
+          <Icon size={16} />
+          <span>{item.label}</span>
+        </Button>;
+      })}
+    </nav>
+
+    <StepProgress steps={analyzeSteps} active={loading === 'analyze'} />
+    <main className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+      {children}
+    </main>
   </div>;
 }
 

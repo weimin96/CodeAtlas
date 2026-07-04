@@ -8,3 +8,5 @@
 - 阶段 0 首次提交失败：计划文件被 .gitignore 忽略，改用 git add -f 强制纳入。
 - 阶段 1 完成：新增报告质量、数据模型、证据相关类型；增强 normalizer；读取旧报告时做规范化。
 - 阶段 1 验证通过：npm run typecheck；node --check server/report-normalizer.js server/server.js。
+- 阶段 2 完成：AppShell 改为顶部项目栏和入口工具栏；Overview 增加项目 Hero 与分析质量卡片。
+- 阶段 2 验证通过：npm run typecheck。
