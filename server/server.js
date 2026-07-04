@@ -20,14 +20,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
 const webRoot = path.join(packageRoot, 'web');
 
-let cache = {
+function createServerCache() {
+  return {
   scan: null,
   report: null,
   contextPack: null,
   codeGraph: null
-};
+  };
+}
 
-export async function startServer({ projectDir, port, host }) {
+export async function startServer({ projectDir, port, host, serveWeb = true }) {
+  const cache = createServerCache();
   const stat = await fs.stat(projectDir);
   if (!stat.isDirectory()) throw new Error(`Not a directory: ${projectDir}`);
 
@@ -253,12 +256,12 @@ export async function startServer({ projectDir, port, host }) {
     } catch (error) { next(error); }
   });
 
-  const vite = await createViteServer({
+  const vite = serveWeb ? await createViteServer({
     root: webRoot,
     server: { middlewareMode: true, hmr: { port: port + 1 } },
     appType: 'spa'
-  });
-  app.use(vite.middlewares);
+  }) : null;
+  if (vite) app.use(vite.middlewares);
 
   app.use((err, _req, res, _next) => {
     res.status(500).json({ error: err?.message || String(err) });
@@ -266,6 +269,9 @@ export async function startServer({ projectDir, port, host }) {
 
   return await new Promise((resolve) => {
     const listener = app.listen(port, host, () => {
+      listener.on('close', () => {
+        void vite?.close();
+      });
       resolve({ app, listener, port: listener.address().port });
     });
   });
