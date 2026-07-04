@@ -1,25 +1,9 @@
-# 整改进度
+# 项目优化进度
 
 ## 2026-07-04
-- 读取项目规范、planning-with-files、frontend-design、DESIGN.md。
-- 上一轮阶段 0-14 已完成并提交，最近提交为 `0488b05 refactor: surface frontend api errors and update readme`。
-- 本轮按用户新清单追加阶段 15-22：测试/CI、代码图谱、图谱页、Inspector、AI JSON repair、人工确认状态、Markdown 文档集、README。
-- 确认 package.json 缺少 test/build/lint/e2e/prepublishOnly。
-- 确认 server/scanner.js 与 symbol-indexer.js 已有符号索引，但未构建 imports/calls 图谱。
-- 确认前端 AppShell 目前没有代码图谱页入口。
-- 阶段 15 完成：新增 build/test/test:e2e/lint/prepublishOnly 脚本、Node 内置测试和 GitHub Actions CI。
-- 阶段 15 验证通过：npm run test，npm run typecheck，npm run build。
-- 阶段 16 完成：新增 server/code-graph.js，支持 JS/TS 文件、目录、符号、imports、calls、warnings 和 shortest path。
-- 阶段 16 验证通过：node --check server/code-graph.js，npm run test。
-- 阶段 17 完成：新增 /api/code-graph，前端新增代码图谱导航、图谱加载状态、节点搜索和直接关系视图。
-- 阶段 17 验证通过：node --check server/server.js，npm run typecheck。
-- 阶段 18 完成：代码图谱页右侧升级为 Inspector，增加概览、为什么有关、告警、代码四个视图，并用最短路径解释节点关系。
-- 阶段 18 验证通过：npm run typecheck。
-- 阶段 19 完成：AI 分析和追问在 JSON 解析失败时使用 repair prompt 重试一次，仍失败才返回明确错误。
-- 阶段 19 验证通过：node --check server/ai.js，npm run test，当前 8 个测试通过。
-- 阶段 20 完成：ProjectModule、CoreFlow、RiskItem、DataEntity 增加 verificationStatus、verifiedBy、verifiedAt、verificationNote；normalizer 默认 ai_guess 并保留显式状态。
-- 阶段 20 验证通过：npm run typecheck，npm run test，当前 9 个测试通过。
-- 阶段 21 完成：新增 document-exporter，生成 PROJECT_MAP、MODULES、CORE_FLOWS、DATA_MODEL、RISK_REGISTER、READING_PLAN、QUESTIONS 文档集，并接入 /api/onboarding-docs。
-- 阶段 21 验证通过：node --check server/document-exporter.js，node --check server/server.js，npm run test，当前 11 个测试通过。
-- 阶段 22 完成：README 同步测试脚本、CI、JS/TS Code Graph、Inspector、AI JSON repair、确认状态、接管文档集和当前限制。
-- 阶段 22 验证通过：npx tsc -p web/tsconfig.json --noEmit，npm run test，npm run build。build 仍有既有大 chunk 警告。
+- 读取 planning-with-files，恢复 task_plan/progress/findings。
+- 最新用户清单拆分为阶段 23-28。
+- 当前已完成上一轮大量基础项：Playwright、ESLint、数据实体确认、codeatlas CLI、TS AST Code Graph、SQLite 镜像、Cytoscape 画布。
+- 阶段 23 开始：目标是补 Code Graph 范围切换、边类型过滤、warning 搜索、邻居高亮和业务回链。
+- 阶段 23 完成：CodeGraphPage 增加 all/module/flow/file/symbol 范围切换、contains/defines/imports/calls/warnings-only 过滤、按文件/函数/模块/warning 搜索、直接/调用方/被调用方/import/2-hop 高亮，以及模块/链路/风险业务回链。
+- 阶段 23 验证通过：tsc --noEmit、vite build、Playwright e2e。

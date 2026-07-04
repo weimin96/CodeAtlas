@@ -121,7 +121,7 @@ export default function App() {
       {activePage === 'flow-detail' && <FlowDetailPage report={workbench.report} activeFlow={workbench.activeFlow} loading={workbench.loading} onBack={() => setActivePage('flows')} onOpenStep={openFlowStep} onUpdateVerification={changeVerification} />}
       {activePage === 'data' && <DataModelPage payload={workbench.payload} report={workbench.report} loading={workbench.loading} onUpdateVerification={changeVerification} />}
       {activePage === 'risks' && <RiskPage report={workbench.report} activeRisk={workbench.activeRisk} loading={workbench.loading} onSelectRisk={workbench.setActiveRisk} onOpenRiskCode={openRiskCode} onUpdateVerification={changeVerification} />}
-      {activePage === 'graph' && <CodeGraphPage graph={workbench.codeGraph} loading={workbench.loading} onLoadGraph={workbench.loadCodeGraph} onOpenFile={openGraphFile} />}
+      {activePage === 'graph' && <CodeGraphPage graph={workbench.codeGraph} report={workbench.report} currentFile={workbench.currentFile} currentSymbol={workbench.currentSymbol} activeFlow={workbench.activeFlow} activeRisk={workbench.activeRisk} loading={workbench.loading} onLoadGraph={workbench.loadCodeGraph} onOpenFile={openGraphFile} />}
       {activePage === 'history' && <HistoryPage report={workbench.report} askThreads={workbench.askThreads} />}
       {activePage === 'code' && <div className="grid h-[calc(100vh-104px)] grid-cols-[minmax(680px,1fr)_380px] gap-4">
         <CodeWorkspace
