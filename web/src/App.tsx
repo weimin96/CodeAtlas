@@ -44,8 +44,11 @@ export default function App() {
       throw new Error(data?.error || `导出接管文档失败：${response.status}`);
     }
     const names = data?.names || Object.keys(data?.docs || {});
-    const markdown = names.map((name) => `# ${name}\n\n${data?.docs?.[name] || ''}`).join('\n\n---\n\n');
-    downloadText('codeatlas-onboarding-docs.md', markdown || '# CodeAtlas Onboarding Docs\n\n暂无文档。');
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    for (const name of names) zip.file(name, data?.docs?.[name] || '');
+    const blob = await zip.generateAsync({ type: 'blob' });
+    downloadBlob('codeatlas-onboarding-docs.zip', blob);
   }
 
   function openFlowStep(step: FlowStep) {
@@ -161,8 +164,7 @@ export default function App() {
   </AppShell>;
 }
 
-function downloadText(filename: string, content: string) {
-  const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+function downloadBlob(filename: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;

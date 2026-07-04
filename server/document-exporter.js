@@ -5,10 +5,12 @@ const DOCUMENT_NAMES = [
   'DATA_MODEL.md',
   'RISK_REGISTER.md',
   'READING_PLAN.md',
-  'QUESTIONS.md'
+  'QUESTIONS.md',
+  'CODE_GRAPH_SUMMARY.md',
+  'ANALYSIS_QUALITY.md'
 ];
 
-export function buildDocumentSet({ report, scan }) {
+export function buildDocumentSet({ report, scan, codeGraph }) {
   if (!report) throw new Error('No report available for document export. Run analysis first.');
   const docs = {
     'PROJECT_MAP.md': projectMapDocument(report, scan),
@@ -17,7 +19,9 @@ export function buildDocumentSet({ report, scan }) {
     'DATA_MODEL.md': dataModelDocument(report),
     'RISK_REGISTER.md': risksDocument(report),
     'READING_PLAN.md': readingPlanDocument(report),
-    'QUESTIONS.md': questionsDocument(report)
+    'QUESTIONS.md': questionsDocument(report),
+    'CODE_GRAPH_SUMMARY.md': codeGraphDocument(codeGraph),
+    'ANALYSIS_QUALITY.md': analysisQualityDocument(report, scan, codeGraph)
   };
   return { generatedAt: new Date().toISOString(), names: DOCUMENT_NAMES, docs };
 }
@@ -137,6 +141,55 @@ function questionsDocument(report) {
     heading('Skipped Files'),
     table(['文件', '原因'], (report.analysisQuality?.skippedFiles || []).map((file) => [file.path, file.reason]))
   ]);
+}
+
+function codeGraphDocument(codeGraph) {
+  const graph = codeGraph || { totals: {}, nodes: [], edges: [], warnings: [] };
+  const edgeCounts = countBy(graph.edges || [], (edge) => edge.type);
+  const nodeCounts = countBy(graph.nodes || [], (node) => node.type);
+  return joinSections([
+    heading('Code Graph Summary'),
+    line('生成时间', graph.generatedAt || '未生成'),
+    line('节点', graph.totals?.nodes ?? graph.nodes?.length ?? 0),
+    line('关系', graph.totals?.edges ?? graph.edges?.length ?? 0),
+    line('文件', graph.totals?.files ?? 0),
+    line('告警', graph.totals?.warnings ?? graph.warnings?.length ?? 0),
+    heading('Node Types'),
+    table(['类型', '数量'], Object.entries(nodeCounts)),
+    heading('Edge Types'),
+    table(['类型', '数量'], Object.entries(edgeCounts)),
+    heading('Warnings'),
+    table(['文件', '类型', '说明'], (graph.warnings || []).slice(0, 100).map((warning) => [warning.path, warning.kind, warning.message]))
+  ]);
+}
+
+function analysisQualityDocument(report, scan, codeGraph) {
+  const quality = report.analysisQuality || {};
+  return joinSections([
+    heading('Analysis Quality'),
+    line('扫描文件', quality.scannedFiles ?? scan?.totalFiles ?? 0),
+    line('索引符号', quality.indexedSymbols ?? scan?.totalSymbols ?? 0),
+    line('上下文文件', quality.contextFiles?.length || 0),
+    line('跳过文件', quality.skippedFiles?.length || 0),
+    line('解析告警', quality.parseWarnings?.length || 0),
+    line('图谱节点', codeGraph?.totals?.nodes || 0),
+    line('图谱关系', codeGraph?.totals?.edges || 0),
+    line('图谱告警', codeGraph?.totals?.warnings || 0),
+    heading('Context Files'),
+    table(['文件', '角色', '优先级', '分数'], (quality.contextFiles || []).map((file) => [file.path, file.role, file.priority, file.score])),
+    heading('Skipped Files'),
+    table(['文件', '原因'], (quality.skippedFiles || []).map((file) => [file.path, file.reason])),
+    heading('Parse Warnings'),
+    table(['文件', '原因'], (quality.parseWarnings || []).map((warning) => [warning.path, warning.reason]))
+  ]);
+}
+
+function countBy(items, getKey) {
+  return items.reduce((acc, item) => {
+    const key = getKey(item) || 'unknown';
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
 }
 
 function heading(text) {

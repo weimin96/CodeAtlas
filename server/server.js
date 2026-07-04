@@ -150,7 +150,11 @@ export async function startServer({ projectDir, port, host }) {
         const storedReport = await readProjectReport(projectDir);
         cache.report = storedReport ? normalizeReport(storedReport, null, cache.scan) : null;
       }
-      res.json(buildDocumentSet({ report: cache.report, scan: cache.scan }));
+      if (!cache.codeGraph) {
+        cache.codeGraph = await buildCodeGraph({ root: projectDir, scan: cache.scan });
+        await recordCodeGraph(projectDir, cache.codeGraph);
+      }
+      res.json(buildDocumentSet({ report: cache.report, scan: cache.scan, codeGraph: cache.codeGraph }));
     } catch (error) { next(error); }
   });
 

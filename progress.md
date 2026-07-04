@@ -13,3 +13,5 @@
 - 阶段 25 验证通过：tsc --noEmit、vite build、npm run lint。
 - 阶段 26 完成：Context Pack 支持 buildGraphContext，将目标符号/文件的 calls/imports 邻居和 warnings 加入评分与 Markdown；analyze/context-pack/ask 路由会构建或复用 Code Graph 并注入上下文。
 - 阶段 26 验证通过：node --check server/context-pack.js、node --check server/context-enrichment.js、node --check server/server.js、npm run test、npm run lint。
+- 阶段 27 完成：接管文档集新增 CODE_GRAPH_SUMMARY.md 与 ANALYSIS_QUALITY.md；/api/onboarding-docs 会包含图谱摘要；前端“接管文档”改为下载 codeatlas-onboarding-docs.zip。
+- 阶段 27 验证通过：node --check server/document-exporter.js、node --check server/server.js、npm run test、tsc --noEmit、vite build、npm run lint。

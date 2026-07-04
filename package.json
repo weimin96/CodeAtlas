@@ -57,6 +57,7 @@
     "commander": "^14.0.0",
     "cytoscape": "^3.34.0",
     "express": "^5.0.0",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.468.0",
     "mermaid": "^11.0.0",
     "ollama-ai-provider-v2": "^3.6.0",

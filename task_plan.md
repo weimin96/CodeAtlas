@@ -16,13 +16,13 @@
 | 24 | complete | Explain cache 真正读写复用：后端缓存 API、AI miss、SQLite write、前端 debounce/cancel | test、typecheck、build、lint |
 | 25 | complete | Why Connected 业务入口：模块/链路/风险/代码浏览器解释入口 | typecheck、build、lint |
 | 26 | complete | Graph-aware Context Pack：flow/risk/question 引入 graph 邻居和路径 | test、node --check、lint |
-| 27 | pending | 多文件 zip 文档集：新增 CODE_GRAPH_SUMMARY、ANALYSIS_QUALITY，前端 zip 下载 | test、typecheck、build |
+| 27 | complete | 多文件 zip 文档集：新增 CODE_GRAPH_SUMMARY、ANALYSIS_QUALITY，前端 zip 下载 | test、typecheck、build、lint |
 | 28 | pending | README 同步与全量验证 | lint、test、e2e、build、dry-run |
 
 ## 风险
 - Cytoscape 大图性能需要限制节点/边数量。
 - AI Explain 会引入费用和延迟，必须缓存和取消请求。
-- zip 若不引入依赖，会使用浏览器 Blob + JSZip；需要新增依赖。
+- zip 下载依赖 JSZip。
 - Graph-aware Context Pack 只能增强上下文选择，不能保证完整调用图准确。
 
 ## 错误记录

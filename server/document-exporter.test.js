@@ -16,13 +16,15 @@ const report = {
 };
 
 test('buildDocumentSet returns the onboarding markdown document set', () => {
-  const set = buildDocumentSet({ report, scan: { totalFiles: 3, totalSymbols: 5 } });
+  const set = buildDocumentSet({ report, scan: { totalFiles: 3, totalSymbols: 5 }, codeGraph: { generatedAt: '2026-07-04T00:00:00.000Z', totals: { nodes: 2, edges: 1, files: 1, warnings: 0 }, nodes: [{ type: 'file' }, { type: 'function' }], edges: [{ type: 'calls' }], warnings: [] } });
 
-  assert.deepEqual(set.names, ['PROJECT_MAP.md', 'MODULES.md', 'CORE_FLOWS.md', 'DATA_MODEL.md', 'RISK_REGISTER.md', 'READING_PLAN.md', 'QUESTIONS.md']);
+  assert.deepEqual(set.names, ['PROJECT_MAP.md', 'MODULES.md', 'CORE_FLOWS.md', 'DATA_MODEL.md', 'RISK_REGISTER.md', 'READING_PLAN.md', 'QUESTIONS.md', 'CODE_GRAPH_SUMMARY.md', 'ANALYSIS_QUALITY.md']);
   assert.match(set.docs['PROJECT_MAP.md'], /CodeAtlas/);
   assert.match(set.docs['MODULES.md'], /分析模块/);
   assert.match(set.docs['CORE_FLOWS.md'], /分析链路/);
   assert.match(set.docs['QUESTIONS.md'], /是否需要 SQLite/);
+  assert.match(set.docs['CODE_GRAPH_SUMMARY.md'], /Code Graph Summary/);
+  assert.match(set.docs['ANALYSIS_QUALITY.md'], /图谱节点/);
 });
 
 test('buildDocumentSet fails when no report is available', () => {
