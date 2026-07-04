@@ -64,6 +64,7 @@ async function runPack(argv) {
     .option('--max-chars <chars>', 'maximum context characters', '120000')
     .option('--include <patterns...>', 'include only matching paths for the pack output')
     .option('--ignore <patterns...>', 'exclude matching paths from the pack output')
+    .option('--stdin', 'read additional include paths or patterns from stdin')
     .option('-o, --output <file>', 'write output to a file instead of stdout')
     .parse(argv, { from: 'user' });
 
@@ -74,8 +75,9 @@ async function runPack(argv) {
   if (!Number.isFinite(maxChars) || maxChars <= 0) throw new Error('Invalid pack --max-chars value.');
 
   const projectDir = path.resolve(packProgram.args[0] || '.');
+  const stdinInclude = opts.stdin ? await readStdinPatterns() : [];
   const scan = filterScanForPack(await scanProject(projectDir), {
-    include: opts.include || [],
+    include: [...(opts.include || []), ...stdinInclude],
     ignore: opts.ignore || []
   });
   const codeGraph = await buildCodeGraph({ root: projectDir, scan });
@@ -91,6 +93,18 @@ async function runPack(argv) {
   }
   process.stdout.write(output);
   if (!output.endsWith('\n')) process.stdout.write('\n');
+}
+
+async function readStdinPatterns() {
+  if (process.stdin.isTTY) throw new Error('pack --stdin requires piped input.');
+  process.stdin.setEncoding('utf8');
+  let content = '';
+  for await (const chunk of process.stdin) content += chunk;
+  return parseStdinPatterns(content);
+}
+
+function parseStdinPatterns(content) {
+  return String(content || '').split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith('#'));
 }
 
 function filterScanForPack(scan, { include = [], ignore = [] } = {}) {
