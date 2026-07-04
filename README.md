@@ -231,7 +231,7 @@ API Key 优先可通过环境变量提供。通过页面保存时，配置写入
 - 模块、链路、风险的人工确认状态已支持 UI 更新并写回本地报告；数据实体状态暂未提供前端编辑入口。
 - 追问历史已有前端 scope 归档，但追问线程、验证结论、图谱和解释缓存暂未 SQLite 化。
 - `/api/onboarding-docs` 暂未提供前端批量下载按钮。
-- `test:e2e` 脚本已预留，但 Playwright 用例尚未落地。
+- `test:e2e` 已接入 Playwright，包含工作台 smoke 用例；CI 会安装 Chromium 后执行。
 - release workflow 已提供 npm provenance 发布入口，但真实发布依赖仓库配置 `NPM_TOKEN`。
 - 多模型 fallback 已支持 `provider=auto`，但每个 provider 的独立 API Key / model UI 尚未展开。
 - 暂未支持多人协作或远程仓库托管。

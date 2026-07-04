@@ -202,7 +202,7 @@ export async function startServer({ projectDir, port, host }) {
 
   const vite = await createViteServer({
     root: webRoot,
-    server: { middlewareMode: true },
+    server: { middlewareMode: true, hmr: { port: port + 1 } },
     appType: 'spa'
   });
   app.use(vite.middlewares);
