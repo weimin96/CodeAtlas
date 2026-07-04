@@ -27,7 +27,7 @@
 | 19 | complete | AI JSON repair 一次重试 | npm run test；node --check server/ai.js |
 | 20 | complete | 人工确认状态类型与 normalizer 默认值 | npm run typecheck；npm run test |
 | 21 | complete | 导出正式 Markdown 文档集 | node --check server/document-exporter.js server/server.js |
-| 22 | pending | README 同步测试、CI、图谱、导出和限制 | npm run typecheck |
+| 22 | complete | README 同步测试、CI、图谱、导出和限制 | npm run typecheck |
 
 ## 验证策略
 - 优先运行新增单元测试覆盖服务端纯函数。

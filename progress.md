@@ -21,3 +21,5 @@
 - 阶段 20 验证通过：npm run typecheck，npm run test，当前 9 个测试通过。
 - 阶段 21 完成：新增 document-exporter，生成 PROJECT_MAP、MODULES、CORE_FLOWS、DATA_MODEL、RISK_REGISTER、READING_PLAN、QUESTIONS 文档集，并接入 /api/onboarding-docs。
 - 阶段 21 验证通过：node --check server/document-exporter.js，node --check server/server.js，npm run test，当前 11 个测试通过。
+- 阶段 22 完成：README 同步测试脚本、CI、JS/TS Code Graph、Inspector、AI JSON repair、确认状态、接管文档集和当前限制。
+- 阶段 22 验证通过：npx tsc -p web/tsconfig.json --noEmit，npm run test，npm run build。build 仍有既有大 chunk 警告。

@@ -1,12 +1,12 @@
 # Project Fast Onboarding
 
-本地项目快速接管工作台。通过 npm 安装后，用命令指定一个本地项目目录，在浏览器里查看项目总览、模块地图、模块详情、核心链路、链路详情、数据模型、风险雷达、代码证据，并基于当前文件、选中代码、符号、链路或风险追问 AI。
+本地项目快速接管工作台。通过 npm 安装后，用命令指定一个本地项目目录，在浏览器里查看项目总览、模块地图、模块详情、核心链路、链路详情、数据模型、风险雷达、代码图谱、代码证据，并基于当前文件、选中代码、符号、链路或风险追问 AI。
 
 ## 当前版本
 
 当前代码版本：`0.5.1`。
 
-已完成能力覆盖 v0.1-v0.5，并继续补充项目理解工作台能力：顶部导航、报告质量信息、证据索引、模块详情、链路剧本、风险详情、Context Pack mode、结构化追问答案和明确失败策略。
+已完成能力覆盖 v0.1-v0.5，并继续补充项目理解工作台能力：顶部导航、报告质量信息、证据索引、模块详情、链路剧本、风险详情、Context Pack mode、结构化追问答案、明确失败策略、JS/TS Code Graph、图谱 Inspector、AI JSON repair、人工确认状态字段、测试脚本、CI 和接管文档导出。
 
 ## 技术栈
 
@@ -21,6 +21,7 @@
   - OpenAI-compatible: `@ai-sdk/openai-compatible`
   - Ollama: `ollama-ai-provider-v2`
 - Schema validation: Zod
+- Test: Node.js built-in test runner
 
 ## 安装
 
@@ -57,6 +58,25 @@ pfo /path/to/your/project --no-open
 ```text
 http://127.0.0.1:7890
 ```
+
+## 开发与验证
+
+```bash
+npm run dev          # 启动本地工作台
+npm run typecheck    # 前端 TypeScript 类型检查
+npm run test         # 服务端单元测试
+npm run build        # Vite 前端生产构建
+npm run lint         # Node ESM 语法检查
+npm run pack:local   # 本地 npm pack
+```
+
+发布前会执行：
+
+```bash
+npm run typecheck && npm run test && npm run build
+```
+
+仓库已提供 GitHub Actions：PR 和 main 分支 push 会执行依赖安装、类型检查、测试和构建；main 分支还会执行 `npm pack --dry-run`。
 
 ## AI 配置
 
@@ -102,6 +122,7 @@ API Key: 留空
 - 核心链路：查看链路图和步骤，进入链路详情查看时序图、代码剧本、数据读写、外部调用、异常路径、推荐断点、风险和证据。
 - 数据模型：查看实体、关系、状态机、关键字段和数据风险。
 - 风险雷达：查看风险分布，选择风险后查看影响范围、验证步骤、建议测试和代码证据。
+- 代码图谱：查看 JS/TS 文件、目录、符号、导入和近似调用关系，支持节点搜索、直接关系 Inspector、解析告警和 Why Connected 最短路径。
 - 代码浏览器：打开证据文件、定位符号和行号，结合右侧追问面板分析代码。
 - 追问历史 / 阅读路线：查看报告生成的阅读计划。
 
@@ -110,29 +131,51 @@ API Key: 留空
 - 扫描本地项目目录，并识别关键文件、入口候选、模块候选。
 - 基于正则提取 JavaScript / TypeScript / Python / Go / Java 的函数、类、接口、方法和常量。
 - 构建 Repo Map，并按优先级、路径角色、符号数量和文件大小排序。
+- 构建 JS/TS Code Graph，输出 nodes、edges、warnings，边类型包含 `contains`、`defines`、`imports`、`calls`。
+- Code Graph 支持解析相对导入、近似函数调用、未解析导入和未解析调用告警。
+- 图谱页支持 Inspector：概览、为什么有关、告警、代码。
+- Why Connected 通过最短路径解释两个节点为什么有关。
 - 构建 Context Pack，按字符预算选择 AI 分析上下文，并支持导出 `project-context.md`。
 - Context Pack 支持 `overview`、`module`、`flow`、`risk`、`question` mode，并按目标模块、链路、风险、路径和符号加权选择上下文。
 - AI 生成项目概览、分析质量、入口、模块、模块能力、核心链路、数据模型、风险、阅读路线、证据索引和 Mermaid 图。
 - AI 分析 prompt 按项目总览、模块分析、链路分析、风险与待验证问题四阶段组织。
+- AI 返回非法 JSON 时会用 repair prompt 重试一次；重试后仍失败才显示错误。
 - 启发式生成 2-5 条核心链路候选，包括 CLI、API、页面和后台任务等常见入口。
 - 链路步骤可绑定文件、符号和行号，并支持点击打开代码位置。
 - 模块详情和链路详情会把判断连接到代码证据。
 - 风险详情包含风险说明、影响范围、验证步骤、建议测试和相关文件。
+- 模块、链路、风险和数据实体已有人工确认状态字段：`ai_guess`、`verified`、`rejected`、`pending`、`stale`。
 - 追问会绑定当前文件、选中行、当前符号、当前链路和当前风险。
 - 追问返回结构化答案：结论、证据、风险、下一步验证动作、相关文件和可信度。
-- 支持导出 `repo-map.json` 和 `project-context.md`。
+- 支持导出 `repo-map.json`、`project-context.md` 和 `/api/onboarding-docs` 接管文档集。
+- `/api/onboarding-docs` 返回 `PROJECT_MAP.md`、`MODULES.md`、`CORE_FLOWS.md`、`DATA_MODEL.md`、`RISK_REGISTER.md`、`READING_PLAN.md`、`QUESTIONS.md`。
 - 支持 OpenAI-compatible、OpenAI 和 Ollama。
 
 ## 明确失败策略
 
 系统不把关键错误降级成可继续结果：
 
-- AI 分析和追问必须返回合法 JSON；追问结果还必须通过结构校验。
-- AI 返回非 JSON 或字段结构不符合要求时，请求会失败并显示错误。
+- AI 分析和追问必须返回合法 JSON；非法 JSON 只 repair 一次。
+- AI repair 后仍不是合法 JSON，或追问结果字段结构不符合要求时，请求会失败并显示错误。
 - Context Pack、追问上下文和扫描器读取文件失败时会明确报错。
 - `.gitignore` / `pfo.ignore` 只在文件不存在时忽略；其他 IO 错误会中止扫描。
 - 配置文件不存在时使用环境变量；配置文件存在但读取失败、JSON 不合法或解密失败时会明确报错。
 - 前端 API 请求统一校验 HTTP 状态和响应中的 `error` 字段，配置加载失败不会被静默忽略。
+
+## 导出
+
+```bash
+# Repo Map
+curl http://127.0.0.1:7890/api/repo-map
+
+# Context Pack
+curl http://127.0.0.1:7890/api/context-pack?format=markdown
+
+# 接管文档集
+curl http://127.0.0.1:7890/api/onboarding-docs
+```
+
+接管文档集当前以 JSON 返回多个 Markdown 文件名和内容，适合后续接入前端批量下载或本地写盘。
 
 ## 设计取向
 
@@ -140,8 +183,9 @@ API Key: 留空
 
 1. 先生成第一版地图。
 2. 再进入模块或链路详情，查看职责、剧本和证据。
-3. 然后围绕当前文件、函数、链路或风险追问。
-4. 最后由人基于代码、断点、日志和测试验证。
+3. 然后通过代码图谱检查真实导入、近似调用关系和解析告警。
+4. 接着围绕当前文件、函数、链路或风险追问。
+5. 最后由人基于代码、断点、日志和测试验证。
 
 ## 安全说明
 
@@ -151,11 +195,17 @@ API Key 优先可通过环境变量提供。通过页面保存时，配置写入
 
 ## 当前限制
 
+- 产品名、仓库名、README 标题、npm 包名和 CLI 还未统一；当前仍保留 `Project Fast Onboarding` / `project-fast-onboarding` / `pfo`。
 - 符号索引当前使用正则实现，不是 Tree-sitter AST 级索引。
-- 核心链路当前是候选链路，不是精确调用图。
+- Code Graph 目前只支持 JS/TS 图谱层；Python / Go / Java 仍只有符号索引。
+- `calls` 是基于名称匹配的近似静态调用关系，无法覆盖动态调用、别名、重导出和复杂类型推断。
+- 核心链路仍是候选链路，不是完整精确调用图。
 - Context Pack 使用字符预算近似 token 预算。
 - Context Pack mode 是启发式加权，不是调用图或本地 RAG。
-- 暂未持久化链路追问线程和人工确认结论。
+- 人工确认状态已进入数据模型，但暂未提供持久化编辑 UI。
+- 追问线程、验证结论、图谱和解释缓存暂未 SQLite 化。
+- `/api/onboarding-docs` 暂未提供前端批量下载按钮。
+- `test:e2e` 脚本已预留，但 Playwright 用例尚未落地。
 - 暂未支持多人协作或远程仓库托管。
 
-下一版建议：补充测试体系、引入真实调用关系分析、实现本地 RAG、沉淀人工确认结论。
+下一版建议：品牌命名统一、图谱持久化、解释缓存、前端文档集下载、Playwright 关键路径测试、SQLite 接管知识库。
