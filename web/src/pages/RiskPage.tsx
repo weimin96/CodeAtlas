@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { VerificationControl } from '@/components/VerificationControl';
+import { WhyConnectedPanel } from '@/components/WhyConnectedPanel';
 import { cn } from '@/lib/utils';
 import type { Report, RiskItem, VerificationStatus } from '@/types';
 
@@ -85,12 +86,12 @@ export function RiskPage({
         </CardContent>
       </Card>
 
-      <RiskDetailPanel risk={selected} loading={loading} onOpenRiskCode={onOpenRiskCode} onUpdateVerification={onUpdateVerification} />
+      <RiskDetailPanel report={report} risk={selected} loading={loading} onOpenRiskCode={onOpenRiskCode} onUpdateVerification={onUpdateVerification} />
     </div>
   </div>;
 }
 
-function RiskDetailPanel({ risk, loading, onOpenRiskCode, onUpdateVerification }: { risk: RiskItem | null; loading: string; onOpenRiskCode: (risk: RiskItem) => void; onUpdateVerification: (kind: 'risk', id: string, status: VerificationStatus) => void }) {
+function RiskDetailPanel({ report, risk, loading, onOpenRiskCode, onUpdateVerification }: { report: Report | null; risk: RiskItem | null; loading: string; onOpenRiskCode: (risk: RiskItem) => void; onUpdateVerification: (kind: 'risk', id: string, status: VerificationStatus) => void }) {
   return <Card>
     <CardContent className="p-5">
       <SectionTitle title="风险详情" description="解释影响范围、验证步骤和代码证据。" />
@@ -104,6 +105,14 @@ function RiskDetailPanel({ risk, loading, onOpenRiskCode, onUpdateVerification }
         </div>
 
         <VerificationControl status={risk.verificationStatus} disabled={loading === 'verification'} onChange={(status) => onUpdateVerification('risk', risk.id || risk.title, status)} />
+
+        <WhyConnectedPanel
+          title="为什么这个风险影响这条链路？"
+          description="根据 risk.flowId、risk.moduleId、代码证据和链路步骤，把风险影响范围回链到业务链路。"
+          source={risk.title}
+          target={report?.flows.find((flow) => flow.id === risk.flowId || flow.name === risk.flowId)?.name || risk.flowId || risk.moduleId || '待确认链路'}
+          evidence={risk.evidence?.length ? risk.evidence : risk.path ? [{ path: risk.path, startLine: risk.startLine, endLine: risk.endLine, reason: risk.reason, confidence: risk.confidence }] : []}
+        />
 
         <DetailBlock icon={<TriangleAlert size={16} />} title="为什么危险" content={risk.reason} />
         <DetailBlock icon={<Target size={16} />} title="影响范围" content={risk.impact || '暂无明确影响范围。'} />

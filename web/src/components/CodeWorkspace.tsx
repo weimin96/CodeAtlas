@@ -3,6 +3,7 @@ import { FileCode2, GitBranch, Map, Search } from 'lucide-react';
 import { ActionItem } from '@/components/common/ActionItem';
 import { MermaidPanel } from '@/components/MermaidPanel';
 import { FlowDetail } from '@/components/WorkbenchPanels';
+import { WhyConnectedPanel } from '@/components/WhyConnectedPanel';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,6 +44,7 @@ export function CodeWorkspace({
   return <main className="min-w-0 border-r flex flex-col">
     <TopMap report={report} activeFlow={activeFlow} onOpenStep={onOpenStep} />
     <FileHeader currentFile={currentFile} currentSymbol={currentSymbol} selection={selection} />
+    <CodeImpactPanel report={report} currentFile={currentFile} currentSymbol={currentSymbol} />
     <div className="grid grid-cols-[260px_1fr] min-h-0 flex-1">
       <FileNavigator
         search={search}
@@ -83,6 +85,22 @@ function TopMap({ report, activeFlow, onOpenStep }: { report: Report | null; act
         )}
       </CardContent>
     </Card>
+  </div>;
+}
+
+function CodeImpactPanel({ report, currentFile, currentSymbol }: { report: Report | null; currentFile: FilePayload | null; currentSymbol: SymbolInfo | null }) {
+  if (!currentFile) return null;
+  const modules = (report?.modules || []).filter((module) => module.paths?.some((path) => currentFile.path.startsWith(path) || path === currentFile.path));
+  const flows = (report?.flows || []).filter((flow) => flow.steps?.some((step) => step.path === currentFile.path || step.symbol === currentSymbol?.name));
+  const evidence = [{ path: currentFile.path, symbol: currentSymbol?.name, startLine: currentSymbol?.startLine, endLine: currentSymbol?.endLine, reason: '当前代码对象用于推导模块和链路影响范围' }];
+  return <div className="border-b bg-blue-50/30 p-3">
+    <WhyConnectedPanel
+      title="这个函数会影响哪些模块 / 链路？"
+      description={`当前对象关联 ${modules.length} 个模块、${flows.length} 条链路。依据文件路径、当前符号和链路步骤反向定位影响范围。`}
+      source={currentSymbol ? `${currentSymbol.kind} · ${currentSymbol.name}` : currentFile.path}
+      target={[...modules.map((item) => item.name), ...flows.map((item) => item.name)].slice(0, 4).join('、') || '暂无业务回链'}
+      evidence={evidence}
+    />
   </div>;
 }
 

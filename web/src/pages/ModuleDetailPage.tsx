@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { VerificationControl } from '@/components/VerificationControl';
+import { WhyConnectedPanel } from '@/components/WhyConnectedPanel';
 import type { CodeReference, ProjectModule, Report, VerificationStatus } from '@/types';
 
 export function ModuleDetailPage({
@@ -54,6 +55,15 @@ export function ModuleDetailPage({
         </div>
       </CardContent>
     </Card>
+
+    <WhyConnectedPanel
+      title="为什么这些文件属于该模块？"
+      description="根据模块路径、AI 证据、相关链路步骤和风险引用，把模块判断回链到代码文件。"
+      source={module.name}
+      target={`${evidence.length || module.paths.length} 个代码证据`}
+      evidence={evidence}
+      onOpenFile={onOpenFile}
+    />
 
     <div className="grid grid-cols-[1.25fr_1fr] gap-4">
       <Card>

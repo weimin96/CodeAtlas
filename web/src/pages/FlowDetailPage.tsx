@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { VerificationControl } from '@/components/VerificationControl';
+import { WhyConnectedPanel } from '@/components/WhyConnectedPanel';
 import type { CoreFlow, FlowStep, Report, VerificationStatus } from '@/types';
 
 export function FlowDetailPage({
@@ -54,6 +55,15 @@ export function FlowDetailPage({
         </div>
       </CardContent>
     </Card>
+
+    <WhyConnectedPanel
+      title="为什么这些函数在这条链路里？"
+      description="根据链路步骤、符号、文件顺序和代码证据，把业务剧本回链到具体函数。"
+      source={flow.name}
+      target={`${flow.steps.length} 个执行步骤`}
+      evidence={flow.steps.map((step) => ({ path: step.path, symbol: step.symbol, startLine: step.startLine, endLine: step.endLine, reason: step.description, confidence: step.confidence }))}
+      onOpenFile={(reference) => onOpenStep({ order: 1, path: reference.path, symbol: reference.symbol, startLine: reference.startLine, endLine: reference.endLine, description: reference.reason })}
+    />
 
     <div className="grid grid-cols-[1.2fr_1fr] gap-4">
       <Card>
