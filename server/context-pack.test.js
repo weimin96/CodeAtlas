@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildContextPack, buildGraphContext, detectSecretRisk, selectContextFiles } from './context-pack.js';
+import { buildContextPack, buildGraphContext, detectSecretRisk, estimateTokenCount, selectContextFiles } from './context-pack.js';
 
 const scan = {
   files: [
@@ -34,6 +34,11 @@ async function createProject(files) {
   }
   return root;
 }
+
+test('estimateTokenCount returns a stable character-based estimate', () => {
+  assert.equal(estimateTokenCount('abcdef'), 2);
+  assert.equal(estimateTokenCount(''), 0);
+});
 
 test('buildGraphContext boosts direct graph neighbors for question mode', () => {
   const context = buildGraphContext(graph, { currentSymbol: { id: 'src/order/controller.ts#createOrder', name: 'createOrder' } }, 'question');
@@ -77,4 +82,6 @@ test('buildContextPack excludes sensitive files from AI chunks', async () => {
 
   assert.deepEqual(pack.chunks.map((chunk) => chunk.path), ['src/app.ts']);
   assert.deepEqual(pack.skippedFiles.map((file) => file.path).sort(), ['.env', 'src/config.ts']);
+  assert.ok(pack.files[0].estimatedTokens > 0);
+  assert.ok(pack.budget.estimatedTokens > 0);
 });

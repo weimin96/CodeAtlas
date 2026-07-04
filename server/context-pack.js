@@ -35,6 +35,7 @@ export async function buildContextPack({ root, scan, mode = 'overview', target =
       continue;
     }
     usedChars += read.content.length;
+    const estimatedTokens = estimateTokenCount(read.content);
     chunks.push({
       path: file.path,
       role: file.role,
@@ -44,6 +45,7 @@ export async function buildContextPack({ root, scan, mode = 'overview', target =
       mode: contextMode,
       symbols: file.symbols || [],
       content: read.content,
+      estimatedTokens,
       truncated: read.truncated
     });
   }
@@ -52,13 +54,17 @@ export async function buildContextPack({ root, scan, mode = 'overview', target =
     generatedAt: new Date().toISOString(),
     mode: contextMode,
     target,
-    budget: { maxChars, usedChars },
+    budget: { maxChars, usedChars, estimatedTokens: estimateTokenCount(chunks.map((chunk) => chunk.content).join('\n')), maxEstimatedTokens: estimateTokenCount('x'.repeat(maxChars)) },
     files: chunks.map(({ content, ...file }) => ({ ...file, charCount: content.length })),
     skippedFiles,
     chunks,
     graphContext,
     markdown: buildContextMarkdown(scan, chunks, { maxChars, usedChars }, { mode: contextMode, target, graphContext, skippedFiles })
   };
+}
+
+export function estimateTokenCount(text) {
+  return Math.ceil(String(text || '').length / 3);
 }
 
 export function detectSecretRisk({ path, content }) {
