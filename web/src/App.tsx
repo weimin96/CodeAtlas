@@ -117,7 +117,7 @@ export default function App() {
     onOpenSettings={() => setSettingsOpen(true)}
   >
     <Suspense fallback={<div className="rounded-lg border bg-white p-6 text-sm text-slate-500">页面加载中...</div>}>
-      {activePage === 'overview' && <OverviewPage payload={workbench.payload} report={workbench.report} onNavigate={setActivePage} />}
+      {activePage === 'overview' && <OverviewPage payload={workbench.payload} report={workbench.report} codeGraph={workbench.codeGraph} onNavigate={setActivePage} />}
       {activePage === 'modules' && <ModuleMapPage payload={workbench.payload} report={workbench.report} onOpenModule={openModule} />}
       {activePage === 'module-detail' && <ModuleDetailPage report={workbench.report} activeModuleId={activeModuleId} loading={workbench.loading} onBack={() => setActivePage('modules')} onOpenFile={openCodeReference} onUpdateVerification={changeVerification} />}
       {activePage === 'flows' && <FlowPage report={workbench.report} activeFlow={workbench.activeFlow} onSelectFlow={workbench.setActiveFlow} onOpenStep={openFlowStep} onOpenFlowDetail={openFlowDetail} onNavigate={setActivePage} />}

@@ -6,12 +6,13 @@ import { ConfidenceBadge, EmptyState, LinkButton, PriorityBadge, RiskBadge, Sect
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import type { PageId } from '@/components/AppShell';
-import type { ProjectPayload, Report } from '@/types';
+import type { CodeGraph, ProjectPayload, Report } from '@/types';
 
-export function OverviewPage({ payload, report, onNavigate }: { payload: ProjectPayload | null; report: Report | null; onNavigate: (page: PageId) => void }) {
+export function OverviewPage({ payload, report, codeGraph, onNavigate }: { payload: ProjectPayload | null; report: Report | null; codeGraph: CodeGraph | null; onNavigate: (page: PageId) => void }) {
   const overview = report?.projectOverview;
   const quality = report?.analysisQuality;
   const highRisks = report?.risks?.filter((risk) => risk.level === 'high').length || 0;
+  const warningSummary = buildWarningSummary(report, codeGraph);
   return <div className="space-y-4">
     <Card className="overflow-hidden border-blue-100 bg-gradient-to-br from-white to-blue-50/60">
       <CardContent className="grid grid-cols-[1.35fr_1fr] gap-6 p-6">
@@ -39,6 +40,12 @@ export function OverviewPage({ payload, report, onNavigate }: { payload: Project
           </div>
           <div className="mt-4 rounded-lg bg-slate-50 p-3 text-xs leading-5 text-slate-600">
             Token 预算：{quality?.tokenBudget ? `${quality.tokenBudget.used}/${quality.tokenBudget.max}` : '待统计'}；解析告警：{quality?.parseWarnings?.length || 0}；跳过文件：{quality?.skippedFiles?.length || 0}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <WarningMetric label="未解析 import" value={warningSummary.unresolvedImport} />
+            <WarningMetric label="未解析 call" value={warningSummary.unresolvedCall} />
+            <WarningMetric label="parse error" value={warningSummary.parseError} />
+            <WarningMetric label="跳过大文件" value={warningSummary.largeSkipped} />
           </div>
         </div>
       </CardContent>
@@ -124,6 +131,25 @@ export function OverviewPage({ payload, report, onNavigate }: { payload: Project
       </CardContent>
     </Card>
   </div>;
+}
+
+function WarningMetric({ label, value }: { label: string; value: number }) {
+  return <div className={`rounded-lg border px-3 py-2 ${value ? 'border-amber-100 bg-amber-50 text-amber-900' : 'bg-white text-slate-600'}`}>
+    <div className="text-[11px] text-slate-500">{label}</div>
+    <div className="mt-1 font-semibold">{value}</div>
+  </div>;
+}
+
+function buildWarningSummary(report: Report | null, codeGraph: CodeGraph | null) {
+  const graphWarnings = codeGraph?.warnings || [];
+  const parseWarnings = report?.analysisQuality?.parseWarnings || [];
+  const skippedFiles = report?.analysisQuality?.skippedFiles || [];
+  return {
+    unresolvedImport: graphWarnings.filter((warning) => warning.kind === 'unresolved_import').length,
+    unresolvedCall: graphWarnings.filter((warning) => warning.kind === 'unresolved_call').length,
+    parseError: graphWarnings.filter((warning) => warning.kind === 'parse_error' || warning.kind === 'syntax_error').length + parseWarnings.length,
+    largeSkipped: skippedFiles.filter((file) => /large|size|大文件|过大/i.test(file.reason)).length
+  };
 }
 
 function QualityMetric({ icon, label, value }: { icon: ReactNode; label: string; value: string | number }) {
