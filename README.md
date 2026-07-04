@@ -16,7 +16,7 @@
 
 当前代码版本：`0.5.1`。
 
-已完成能力覆盖 v0.1-v0.5，并继续补充项目理解工作台能力：顶部导航、CodeAtlas 品牌字标和 logo、报告质量信息、证据索引、模块详情、链路剧本、风险详情、Graph-aware Context Pack、结构化追问答案、明确失败策略、JS/TS Code Graph、Cytoscape 图谱、图谱 Inspector、AI Explain cache、AI JSON repair、人工确认状态字段、测试脚本、CI 和 zip 接管文档导出。
+已完成能力覆盖 v0.1-v0.5，并继续补充项目理解工作台能力：顶部导航、CodeAtlas 品牌字标和 logo、报告质量信息、证据索引、模块详情、链路剧本、风险详情、Graph-aware Context Pack、结构化追问答案、明确失败策略、JS/TS Code Graph、Cytoscape 图谱、通用 ObjectInspector、AI Explain cache、AI JSON repair、人工确认状态字段、测试脚本、CI 和 zip 接管文档导出。
 
 ## 品牌资源
 
@@ -137,12 +137,12 @@ API Key: 留空
 
 ## 工作台页面
 
-- 项目总览：项目定位、技术栈、启动方式、模块数、链路数、风险数和分析质量。
+- 项目总览：项目定位、技术栈、启动方式、模块数、链路数、风险数和分析质量；分析质量会直接显示未解析 import、未解析 call、parse error 和跳过大文件。
 - 模块地图：按业务模块组织项目结构，进入模块详情查看职责、能力、入口、依赖、数据实体、相关链路、风险和代码证据。
 - 核心链路：查看链路图和步骤，进入链路详情查看时序图、代码剧本、数据读写、外部调用、异常路径、推荐断点、风险和证据。
 - 数据模型：查看实体、关系、状态机、关键字段和数据风险。
 - 风险雷达：查看风险分布，选择风险后查看影响范围、验证步骤、建议测试和代码证据。
-- 代码图谱：查看 JS/TS 文件、目录、符号、导入和近似调用关系，支持范围切换、边过滤、按文件/函数/模块/warning 搜索、warnings-only、邻居高亮、2-hop 影响范围、业务回链和 Why Connected 最短路径。
+- 代码图谱：查看 JS/TS 文件、目录、符号、导入和近似调用关系，支持范围切换、边过滤、按文件/函数/模块/warning 搜索、warnings-only、邻居高亮、2-hop 影响范围、画布显示范围/排序、业务回链和 Why Connected 最短路径。
 - 代码浏览器：打开证据文件、定位符号和行号，结合右侧追问面板分析代码。
 - 追问历史 / 阅读路线：查看报告生成的阅读计划。
 
@@ -153,8 +153,9 @@ API Key: 留空
 - 构建 Repo Map，并按优先级、路径角色、符号数量和文件大小排序。
 - 构建 JS/TS Code Graph，输出 nodes、edges、warnings，边类型包含 `contains`、`defines`、`imports`、`calls`。
 - Code Graph 使用 TypeScript AST 提取 JS/TS imports、exports、require、动态 import 和 CallExpression，再进行本地符号匹配。
-- 图谱页支持 Cytoscape 交互画布和 Inspector：概览、解释、为什么有关、告警、代码。
+- 图谱页支持 Cytoscape 交互画布和通用 ObjectInspector：概览、解释、为什么有关、告警、代码。
 - Inspector 解释 tab 使用 600ms 延迟触发、切换取消和前端 session cache；服务端会先查 SQLite explain_cache，未命中才请求 AI，成功后写入缓存。
+- Explain 不提供 Explain All；当前支持 Explain selected、Explain neighbors、Explain current flow impact、Explain risk path。
 - Why Connected 通过最短路径解释两个节点为什么有关。
 - 构建 Context Pack，按字符预算选择 AI 分析上下文，并支持导出 `project-context.md`。
 - Context Pack 支持 `overview`、`module`、`flow`、`risk`、`question` mode，并按目标模块、链路、风险、路径、符号和 Code Graph 邻居加权选择上下文。

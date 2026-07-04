@@ -16,7 +16,7 @@
 | 30 | complete | 首页分析质量展示图谱 warning 分类和跳过大文件 | typecheck、build、lint |
 | 31 | complete | 图谱画布增加显示范围和排序依据选择器 | typecheck、build、e2e |
 | 32 | complete | Explain 收口为 selected/neighbors/flow impact/risk path，明确不做 Explain All | typecheck、build、lint |
-| 33 | pending | README 同步与全量验证 | lint、test、e2e、build、dry-run |
+| 33 | complete | README 同步与全量验证 | lint、test、e2e、build、dry-run |
 
 ## 风险
 - ObjectInspector 完全替换所有详情页会变成大重构，本轮先做通用组件和图谱页落地。
@@ -26,4 +26,4 @@
 ## 错误记录
 | 错误 | 处理 |
 |---|---|
-| 暂无 | 暂无 |
+| 阶段 33 首次验证命令 timeout 超过工具最大值 | 拆成两组命令执行 |

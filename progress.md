@@ -11,3 +11,5 @@
 - 阶段 31 验证通过：tsc --noEmit、vite build、Playwright e2e。
 - 阶段 32 完成：Explain tab 新增 Explain selected、Explain neighbors、Explain current flow impact、Explain risk path 四种解释范围，并明确不提供 Explain All；后端 explain prompt 会接收 mode。
 - 阶段 32 验证通过：node --check server/server.js、tsc --noEmit、vite build、npm run lint。
+- 阶段 33 完成：README 同步 ObjectInspector、首页 warning 指标、画布显示范围/排序，以及 Explain selected/neighbors/flow impact/risk path。
+- 阶段 33 验证通过：npm run lint、npm run test、npm run test:e2e、tsc --noEmit、vite build、npm run release:dry-run。当前 19 个单元测试通过，1 个 e2e 通过。
