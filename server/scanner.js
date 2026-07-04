@@ -146,6 +146,11 @@ async function addFileItem(root, posix, depth, options, state, result) {
   const absoluteFile = path.join(root, posix);
   let stat;
   try {
+    const linkStat = await fs.lstat(absoluteFile);
+    if (linkStat.isSymbolicLink()) {
+      state.skippedFiles.push({ path: posix, reason: 'symlink' });
+      return;
+    }
     stat = await fs.stat(absoluteFile);
   } catch (_error) {
     state.skippedFiles.push({ path: posix, reason: 'missing' });

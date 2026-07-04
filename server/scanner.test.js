@@ -86,3 +86,39 @@ test('scanProject prefers git file candidates when available', async (t) => {
 
   assert.deepEqual(paths, ['.gitignore', 'tracked.ts', 'untracked.ts']);
 });
+
+test('scanProject skips git tracked symlinks', async (t) => {
+  try {
+    await execFileAsync('git', ['--version']);
+  } catch (_error) {
+    t.skip('git is not available');
+    return;
+  }
+
+  const externalDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codemap-ai-external-'));
+  const externalFile = path.join(externalDir, 'outside.ts');
+  await fs.writeFile(externalFile, 'export const outside = true;\n', 'utf8');
+  const root = await createProject({
+    'src/app.ts': 'export const app = true;\n'
+  });
+  const linkPath = path.join(root, 'external-link.ts');
+  try {
+    await fs.symlink(externalFile, linkPath, 'file');
+  } catch (_error) {
+    t.skip('symlink is not available');
+    return;
+  }
+  await execFileAsync('git', ['init'], { cwd: root });
+  await execFileAsync('git', ['config', 'core.symlinks', 'true'], { cwd: root });
+  await execFileAsync('git', ['add', 'src/app.ts', 'external-link.ts'], { cwd: root });
+  const { stdout } = await execFileAsync('git', ['ls-files', '-s', 'external-link.ts'], { cwd: root });
+  if (!stdout.startsWith('120000 ')) {
+    t.skip('git symlink tracking is not available');
+    return;
+  }
+
+  const scan = await scanProject(root, { useGit: true });
+
+  assert.equal(scan.files.some((file) => file.path === 'external-link.ts'), false);
+  assert.ok(scan.skippedFiles.some((file) => file.path === 'external-link.ts' && file.reason === 'symlink'));
+});
