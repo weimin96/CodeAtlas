@@ -46,11 +46,11 @@ export function AiConfigCard({
       </Select>
       <Input value={config.baseURL} onChange={(event) => onChange({ ...config, baseURL: event.target.value })} placeholder="Base URL" />
       {config.provider === 'custom'
-        ? <Input name="pfo-model-inline" value={config.model} autoComplete="off" onChange={(event) => onChange({ ...config, model: event.target.value })} placeholder="Model" />
-        : <Select name="pfo-model-inline" value={config.model} autoComplete="off" onChange={(event) => onChange({ ...config, model: event.target.value })}>
+        ? <Input name="codemap-ai-model-inline" value={config.model} autoComplete="off" onChange={(event) => onChange({ ...config, model: event.target.value })} placeholder="Model" />
+        : <Select name="codemap-ai-model-inline" value={config.model} autoComplete="off" onChange={(event) => onChange({ ...config, model: event.target.value })}>
           {modelOptions(config.provider, config.model).map((model) => <option key={model} value={model}>{model}</option>)}
         </Select>}
-      <Input name="pfo-api-key-inline" value={config.apiKey} autoComplete="off" spellCheck={false} className="[-webkit-text-security:disc]" onChange={(event) => onChange({ ...config, apiKey: event.target.value })} placeholder="API Key" type="text" />
+      <Input name="codemap-ai-api-key-inline" value={config.apiKey} autoComplete="off" spellCheck={false} className="[-webkit-text-security:disc]" onChange={(event) => onChange({ ...config, apiKey: event.target.value })} placeholder="API Key" type="text" />
       <Button size="sm" variant="secondary" onClick={onSave} disabled={!!loading}>保存配置</Button>
     </CardContent>
   </Card>;

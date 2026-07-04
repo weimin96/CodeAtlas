@@ -1,12 +1,20 @@
 <p align="center">
-  <img src="./web/public/brand/codeatlas-wordmark.svg" alt="CODEATLAS" width="520" />
+  <img src="./web/public/brand/codemap-ai-logo.svg" alt="codemap-ai logo" width="96" />
+</p>
+
+# codemap-ai
+
+<p align="center">
+  把本地代码仓库转成可验证的项目接管地图。
 </p>
 
 <p align="center">
-  <img src="./web/public/brand/codeatlas-logo.svg" alt="CodeAtlas logo" width="112" />
+  <a href="https://www.npmjs.com/package/@codemapai/codemap-ai">npm package</a> |
+  <a href="./docs/brand.md">Brand</a> |
+  <a href="./docs/开发计划.md">Roadmap</a> |
+  <a href="https://github.com/weimin96/codemap-ai/issues">Issues</a> |
+  <a href="./LICENSE">License</a>
 </p>
-
-# CodeAtlas
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@codemapai/codemap-ai"><img alt="npm version" src="https://img.shields.io/npm/v/@codemapai/codemap-ai?label=npm"></a>
@@ -16,42 +24,92 @@
   <a href="https://nodejs.org"><img alt="Node.js" src="https://img.shields.io/node/v/@codemapai/codemap-ai"></a>
 </p>
 
-本地项目快速接管工作台。通过 npm 安装后，用命令指定一个本地项目目录，在浏览器里查看项目总览、模块地图、模块详情、核心链路、链路详情、数据模型、风险雷达、代码图谱、代码证据，并基于当前文件、选中代码、符号、链路或风险追问 AI。
+codemap-ai 是一个本地 AI 项目接管工作台。它扫描指定目录，生成项目总览、模块地图、核心链路、数据模型、风险雷达、代码证据和 JS/TS Code Graph，并把追问绑定到当前文件、选区、符号、链路或风险。
 
-> npm 包名为 `@codemapai/codemap-ai`；CLI 已新增 `codeatlas`，并保留 `pfo` / `project-fast-onboarding` 兼容入口。
+npm 包名为 `@codemapai/codemap-ai`。主 CLI 是 `codemap-ai`。
 
-## 当前版本
+## Table of content
 
-当前代码版本：`0.2.0`。
+- [About](#about)
+- [Examples](#examples)
+- [Installation](#installation)
+- [Usage](#usage)
+- [AI providers](#ai-providers)
+- [Workbench](#workbench)
+- [How it works](#how-it-works)
+- [Export](#export)
+- [Development](#development)
+- [Release](#release)
+- [Security and local data](#security-and-local-data)
+- [Current limits](#current-limits)
 
-已完成项目理解工作台核心能力：顶部导航、CodeAtlas 品牌字标和 logo、报告质量信息、证据索引、模块详情、链路剧本、风险详情、Graph-aware Context Pack、结构化追问答案、明确失败策略、JS/TS Code Graph、Cytoscape 图谱、通用 ObjectInspector、AI Explain cache、AI JSON repair、人工确认状态字段、测试脚本、CI 和 zip 接管文档导出。
+## About
 
-## 品牌资源
+大型项目经过多轮 AI 修改后，接手人通常需要先搞清楚入口、模块边界、核心流程、数据读写和风险点。codemap-ai 的目标不是替代人工审查，而是先生成一版可以验证的项目地图，让阅读顺序、代码证据和后续追问有明确上下文。
 
-- 字标：`web/public/brand/codeatlas-wordmark.svg`
-- Logo：`web/public/brand/codeatlas-logo.svg`
-- 系统复用组件：`web/src/components/BrandMark.tsx`
-- 品牌使用说明：`docs/brand.md`
-- 浏览器 favicon 和系统顶部品牌区已使用该 logo。
-- 字标为纯 SVG 几何笔画，不依赖外部字体。
+codemap-ai 当前版本为 `0.2.0`，核心能力包括：
 
-## 技术栈
+- 本地目录扫描、入口识别、模块候选和 Repo Map。
+- AI 项目报告：总览、模块、链路、数据模型、风险、阅读路线和证据索引。
+- JS/TS Code Graph：文件、目录、符号、导入、近似调用关系和解析 warning。
+- Cytoscape 图谱画布：范围切换、边过滤、warnings-only、邻居高亮、2-hop 影响范围和 Why Connected。
+- ObjectInspector：围绕图谱节点展示概览、解释、为什么有关、告警和代码。
+- Graph-aware Context Pack：按模块、链路、风险、路径、符号和图谱邻居加权选择 AI 上下文。
+- 结构化追问：结论、证据、风险、下一步验证、相关文件和可信度。
+- 接管文档导出：项目地图、模块、核心链路、数据模型、风险登记、阅读计划、问题清单、图谱摘要和分析质量。
 
-- CLI / Server: Node.js + Express
-- Frontend: Vite + React + TypeScript
-- UI: Tailwind CSS + shadcn/ui 风格组件
-- Icons: lucide-react
-- Diagram: Mermaid
-- Code graph visualization: Cytoscape
-- Code Preview: Monaco Editor via `@monaco-editor/react`
-- AI: Vercel AI SDK (`ai`)
-  - OpenAI: `@ai-sdk/openai`
-  - OpenAI-compatible: `@ai-sdk/openai-compatible`
-  - Ollama: `ollama-ai-provider-v2`
-- Schema validation: Zod
-- Test: Node.js built-in test runner
+## Examples
 
-## 安装
+### Start a local workspace
+
+```bash
+codemap-ai /path/to/your/project
+```
+
+默认会打开：
+
+```text
+http://127.0.0.1:3000
+```
+
+### Read a project through evidence
+
+```mermaid
+flowchart LR
+  A[Scan local repo] --> B[Repo Map]
+  B --> C[AI project report]
+  B --> D[JS/TS Code Graph]
+  C --> E[Modules and core flows]
+  D --> F[ObjectInspector]
+  E --> G[Context-bound Q&A]
+  F --> G
+  G --> H[Human verification]
+```
+
+### Ask questions with scoped context
+
+```text
+当前文件：server/server.js
+选中代码：/api/analyze 路由
+问题：这个接口失败时会不会吞掉 AI JSON 解析错误？
+```
+
+codemap-ai 会把当前文件、选区、符号、链路、风险和相关图谱邻居放入上下文，再返回结构化答案。回答仍需要通过代码、断点、日志或测试验证。
+
+### Inspect graph connections
+
+```mermaid
+flowchart TD
+  File[File node] --> Symbol[Symbol node]
+  Symbol --> Call[Call edge]
+  File --> Import[Import edge]
+  Call --> Inspector[Explain selected / neighbors / flow impact / risk path]
+  Import --> Why[Why Connected]
+```
+
+Explain 不提供 Explain All，避免高成本批量推断和不可验证结论。当前支持 Explain selected、Explain neighbors、Explain current flow impact、Explain risk path。
+
+## Installation
 
 ```bash
 npm install -g @codemapai/codemap-ai
@@ -64,54 +122,37 @@ npm run pack:local
 npm install -g ./codemapai-codemap-ai-0.2.0.tgz
 ```
 
-## 使用
+## Usage
+
+启动当前目录：
 
 ```bash
-codeatlas /path/to/your/project
+codemap-ai .
+```
+
+启动指定项目：
+
+```bash
+codemap-ai /path/to/your/project
 ```
 
 指定端口：
 
 ```bash
-codeatlas /path/to/your/project --port 8088
+codemap-ai /path/to/your/project --port 8088
 ```
 
 不自动打开浏览器：
 
 ```bash
-codeatlas /path/to/your/project --no-open
+codemap-ai /path/to/your/project --no-open
 ```
 
-默认地址：
-
-```text
-http://127.0.0.1:7890
-```
-
-## 开发与验证
-
-```bash
-npm run dev          # 启动本地工作台
-npm run typecheck    # 前端 TypeScript 类型检查
-npm run test         # 服务端单元测试
-npm run build        # Vite 前端生产构建
-npm run lint         # ESLint 静态检查
-npm run pack:local   # 本地 npm pack
-```
-
-发布前会执行：
-
-```bash
-npm run typecheck && npm run test && npm run build
-```
-
-仓库已提供 GitHub Actions：PR 和 main 分支 push 会执行依赖安装、类型检查、测试和构建；main 分支还会执行 `npm pack --dry-run`。Release workflow 通过 npm Trusted Publishing 发布，不需要在仓库配置 npm token。
-
-## AI 配置
+## AI providers
 
 打开页面右上角的 AI 设置，填写 Provider、Base URL、Model 和 API Key。
 
-配置优先级：CLI 参数 / 项目配置 > `pfo.config.json` > 环境变量 > Web UI 保存配置。
+配置优先级：CLI 参数 / 项目配置 > `codemap-ai.config.json` > 环境变量 > Web UI 保存配置。
 
 ### OpenAI-compatible
 
@@ -122,10 +163,10 @@ Model: gpt-4.1-mini 或其他模型
 API Key: sk-...
 ```
 
-也支持环境变量：
+环境变量示例：
 
 ```bash
-OPENAI_API_KEY=xxx OPENAI_MODEL=gpt-4.1-mini codeatlas /path/to/project
+OPENAI_API_KEY=xxx OPENAI_MODEL=gpt-4.1-mini codemap-ai /path/to/project
 ```
 
 ### Ollama
@@ -135,7 +176,7 @@ ollama serve
 ollama pull qwen2.5-coder:7b
 ```
 
-页面填写：
+页面配置：
 
 ```text
 Provider: Ollama
@@ -144,109 +185,113 @@ Model: qwen2.5-coder:7b
 API Key: 留空
 ```
 
-## 工作台页面
+codemap-ai 也支持 OpenAI、OpenRouter、DeepSeek、Kimi、智谱、SiliconFlow 和 Auto fallback。Auto fallback 默认按 `ollama,openai-compatible,openrouter,openai` 顺序尝试，可通过 `CODEMAP_AI_PROVIDER_PRIORITY` 覆盖。
 
-- 项目总览：项目定位、技术栈、启动方式、模块数、链路数、风险数和分析质量；分析质量会直接显示未解析 import、未解析 call、parse error 和跳过大文件。
-- 模块地图：按业务模块组织项目结构，进入模块详情查看职责、能力、入口、依赖、数据实体、相关链路、风险和代码证据。
-- 核心链路：查看链路图和步骤，进入链路详情查看时序图、代码剧本、数据读写、外部调用、异常路径、推荐断点、风险和证据。
-- 数据模型：查看实体、关系、状态机、关键字段和数据风险。
-- 风险雷达：查看风险分布，选择风险后查看影响范围、验证步骤、建议测试和代码证据。
-- 代码图谱：查看 JS/TS 文件、目录、符号、导入和近似调用关系，支持范围切换、边过滤、按文件/函数/模块/warning 搜索、warnings-only、邻居高亮、2-hop 影响范围、画布显示范围/排序、业务回链和 Why Connected 最短路径。
-- 代码浏览器：打开证据文件、定位符号和行号，结合右侧追问面板分析代码。
-- 追问历史 / 阅读路线：查看报告生成的阅读计划。
+## Workbench
 
-## 当前能力
+| 页面 | 用途 |
+|---|---|
+| 项目总览 | 查看项目定位、技术栈、启动方式、模块数、链路数、风险数和分析质量。 |
+| 模块地图 | 按业务模块组织结构，查看职责、入口、依赖、实体、链路、风险和证据。 |
+| 核心链路 | 查看链路图、步骤、代码剧本、数据读写、外部调用、异常路径和推荐断点。 |
+| 数据模型 | 查看实体、关系、状态机、关键字段和数据风险。 |
+| 风险雷达 | 查看风险分布、影响范围、验证步骤、建议测试和相关文件。 |
+| 代码图谱 | 查看 JS/TS 文件、目录、符号、导入和近似调用关系。 |
+| 代码浏览器 | 打开证据文件、定位符号和行号，并结合右侧追问面板分析代码。 |
+| 追问历史 / 阅读路线 | 查看报告生成的阅读计划和按 scope 归档的追问历史。 |
 
-- 扫描本地项目目录，并识别关键文件、入口候选、模块候选。
-- 基于正则提取 JavaScript / TypeScript / Python / Go / Java 的函数、类、接口、方法和常量。
-- 构建 Repo Map，并按优先级、路径角色、符号数量和文件大小排序。
-- 构建 JS/TS Code Graph，输出 nodes、edges、warnings，边类型包含 `contains`、`defines`、`imports`、`calls`。
-- Code Graph 使用 TypeScript AST 提取 JS/TS imports、exports、require、动态 import 和 CallExpression，再进行本地符号匹配。
-- 图谱页支持 Cytoscape 交互画布和通用 ObjectInspector：概览、解释、为什么有关、告警、代码。
-- Inspector 解释 tab 使用 600ms 延迟触发、切换取消和前端 session cache；服务端会先查 SQLite explain_cache，未命中才请求 AI，成功后写入缓存。
-- Explain 不提供 Explain All；当前支持 Explain selected、Explain neighbors、Explain current flow impact、Explain risk path。
-- Why Connected 通过最短路径解释两个节点为什么有关。
-- 构建 Context Pack，按字符预算选择 AI 分析上下文，并支持导出 `project-context.md`。
-- Context Pack 支持 `overview`、`module`、`flow`、`risk`、`question` mode，并按目标模块、链路、风险、路径、符号和 Code Graph 邻居加权选择上下文。
-- AI 生成项目概览、分析质量、入口、模块、模块能力、核心链路、数据模型、风险、阅读路线、证据索引和 Mermaid 图。
-- AI 分析 prompt 按项目总览、模块分析、链路分析、风险与待验证问题四阶段组织。
-- AI 返回非法 JSON 时会用 repair prompt 重试一次；重试后仍失败才显示错误。
-- 启发式生成 2-5 条核心链路候选，包括 CLI、API、页面和后台任务等常见入口。
-- 链路步骤可绑定文件、符号和行号，并支持点击打开代码位置。
-- 模块详情和链路详情会把判断连接到代码证据。
-- 风险详情包含风险说明、影响范围、验证步骤、建议测试和相关文件。
-- 模块、链路、风险和数据实体已有人工确认状态字段：`ai_guess`、`verified`、`rejected`、`pending`、`stale`。
-- 模块详情、链路详情和风险详情支持更新确认状态，并通过 `/api/verification` 写回本地报告文件。
-- 追问会绑定当前文件、选中行、当前符号、当前链路和当前风险。
-- 追问返回结构化答案：结论、证据、风险、下一步验证动作、相关文件和可信度。
-- 追问历史会按 scope 归档到浏览器 localStorage，包括项目、链路、风险、文件、符号和选区。
-- 在支持 `node:sqlite` 的 Node 运行时，会镜像写入本地 SQLite：scan runs、reports、chat threads、verified conclusions、code graph、explain cache 表。
-- 支持导出 `repo-map.json`、`project-context.md` 和 `/api/onboarding-docs` 接管文档集。
-- 系统顶部“接管文档”按钮会下载 `codeatlas-onboarding-docs.zip` 多文件文档集。
-- `/api/onboarding-docs` 返回 `PROJECT_MAP.md`、`MODULES.md`、`CORE_FLOWS.md`、`DATA_MODEL.md`、`RISK_REGISTER.md`、`READING_PLAN.md`、`QUESTIONS.md`、`CODE_GRAPH_SUMMARY.md`、`ANALYSIS_QUALITY.md`。
-- 支持 OpenAI-compatible、OpenAI、OpenRouter、DeepSeek、Kimi、智谱、SiliconFlow、Ollama 和 Auto fallback。
-- Auto fallback 会按 `ollama,openai-compatible,openrouter,openai` 顺序尝试；可通过 `PFO_AI_PROVIDER_PRIORITY` 覆盖。
+分析质量会显示未解析 import、未解析 call、parse error 和跳过大文件，避免把不完整图谱误当成确定结论。
 
-## 明确失败策略
+## How it works
 
-系统不把关键错误降级成可继续结果：
+```mermaid
+sequenceDiagram
+  participant CLI
+  participant Server
+  participant Scanner
+  participant AI
+  participant Browser
 
-- AI 分析和追问必须返回合法 JSON；非法 JSON 只 repair 一次。
-- AI repair 后仍不是合法 JSON，或追问结果字段结构不符合要求时，请求会失败并显示错误。
-- Context Pack、追问上下文和扫描器读取文件失败时会明确报错。
-- `.gitignore` / `pfo.ignore` 只在文件不存在时忽略；其他 IO 错误会中止扫描。
-- 配置文件不存在时使用环境变量；配置文件存在但读取失败、JSON 不合法或解密失败时会明确报错。
-- 前端 API 请求统一校验 HTTP 状态和响应中的 `error` 字段，配置加载失败不会被静默忽略。
+  CLI->>Server: startServer(projectDir)
+  Browser->>Server: GET /api/project
+  Server->>Scanner: scanProject(root)
+  Scanner-->>Server: repoMap + symbols + codeGraph
+  Browser->>Server: POST /api/analyze
+  Server->>AI: contextPack + project map
+  AI-->>Server: structured report JSON
+  Server-->>Browser: report + evidence + graph
+```
 
-## 导出
+服务端运行在本机，扫描结果、报告、追问历史和图谱缓存优先保存在内存中。在支持 `node:sqlite` 的 Node 运行时，会镜像写入本地 SQLite：scan runs、reports、chat threads、verified conclusions、code graph、explain cache 表。
+
+## Export
 
 ```bash
 # Repo Map
-curl http://127.0.0.1:7890/api/repo-map
+curl http://127.0.0.1:3000/api/repo-map
 
 # Context Pack
-curl http://127.0.0.1:7890/api/context-pack?format=markdown
+curl http://127.0.0.1:3000/api/context-pack?format=markdown
 
 # 接管文档集 API
-curl http://127.0.0.1:7890/api/onboarding-docs
-
-# 或在系统顶部点击“接管文档”，下载 codeatlas-onboarding-docs.zip
+curl http://127.0.0.1:3000/api/onboarding-docs
 ```
 
-接管文档集 API 以 JSON 返回多个 Markdown 文件名和内容；前端会打包为 zip，适合放入项目仓库或团队交接目录。
+也可以在系统顶部点击“接管文档”，下载 `codemap-ai-onboarding-docs.zip`。文档集包含：`PROJECT_MAP.md`、`MODULES.md`、`CORE_FLOWS.md`、`DATA_MODEL.md`、`RISK_REGISTER.md`、`READING_PLAN.md`、`QUESTIONS.md`、`CODE_GRAPH_SUMMARY.md`、`ANALYSIS_QUALITY.md`。
 
-## 设计取向
+## Development
 
-这个工具不是普通 AI coding assistant，而是“项目接管工作台”：
+```bash
+npm run dev          # 启动本地工作台
+npm run typecheck    # 前端 TypeScript 类型检查
+npm run test         # 服务端单元测试
+npm run build        # Vite 前端生产构建
+npm run lint         # ESLint 静态检查
+npm run pack:local   # 本地 npm pack
+```
 
-1. 先生成第一版地图。
-2. 再进入模块或链路详情，查看职责、剧本和证据。
-3. 然后通过代码图谱检查真实导入、近似调用关系、范围过滤、邻居高亮、业务回链和解析告警。
-4. 接着围绕当前文件、函数、链路或风险追问。
-5. 最后由人基于代码、断点、日志和测试验证。
+项目结构：
 
-## 安全说明
+```text
+bin/codemap-ai.js             CLI entry
+server/server.js              Express routes and Vite middleware
+server/scanner.js             file walker and repo map input
+server/symbol-indexer.js      regex-based symbol extraction
+server/ai.js                  AI SDK wrapper and JSON parsing
+server/context-pack.js        context selection for AI
+server/repo-map.js            file ranking and module grouping
+web/                          Vite + React + TypeScript UI
+web/public/brand/             codemap-ai logo
+```
 
-API Key 优先可通过环境变量提供。通过页面保存时，配置写入本机用户目录 `~/.project-fast-onboarding/config.json`。
+发布前会执行：
+
+```bash
+npm run typecheck && npm run test && npm run build
+```
+
+## Release
+
+仓库提供 GitHub Actions：PR 和 main 分支 push 会执行依赖安装、类型检查、测试和构建；main 分支还会执行 `npm pack --dry-run`。
+
+Release workflow 通过 npm Trusted Publishing 发布，不需要在仓库配置 npm token。发布前需要确保 npm 包侧 Trusted Publisher 精确匹配 GitHub user/org、repository 和 workflow filename。
+
+## Security and local data
+
+API Key 优先通过环境变量提供。通过页面保存时，配置写入本机用户目录 `~/.codemap-ai/config.json`。
 
 本地保存的 API Key 会使用 Node.js `crypto` 进行 AES-256-GCM 加密，密钥保存在同一配置目录下的本地密钥文件中。该方案用于避免配置文件直接出现明文 API Key；如果攻击者已经获得同一系统用户的文件读取权限，仍可能同时读取密文和密钥文件。
 
-## 当前限制
+codemap-ai 会把你选择的项目上下文发送给配置的 AI provider。不要对不可信 provider 发送敏感代码或凭证。
 
-- 产品展示名、README 标题、系统顶部品牌和主 CLI 已统一为 CodeAtlas；npm 包名已迁移为 `@codemapai/codemap-ai`。
+## Current limits
+
 - 符号索引当前使用正则实现，不是 Tree-sitter AST 级索引。
 - Code Graph 目前只支持 JS/TS 图谱层；Python / Go / Java 仍只有符号索引。
-- `calls` 已改为 TypeScript AST CallExpression 提取，但目标解析仍基于名称匹配，无法覆盖动态调用、别名、重导出和复杂类型推断。
+- `calls` 使用 TypeScript AST CallExpression 提取，但目标解析仍基于名称匹配，无法覆盖动态调用、别名、重导出和复杂类型推断。
 - 核心链路仍是候选链路，不是完整精确调用图。
 - Context Pack 使用字符预算近似 token 预算。
 - Graph-aware Context Pack 会使用 Code Graph 邻居和 warning 加权，但仍不是完整本地 RAG 或类型系统级调用图。
-- 模块、链路、风险和数据实体的人工确认状态已支持 UI 更新并写回本地报告。
 - SQLite 镜像持久化依赖运行时支持 `node:sqlite`；Node 20 环境会自动跳过，不阻断主流程。
-- `/api/onboarding-docs` 已提供前端合并 Markdown 下载；暂未提供 zip 批量下载。
-- `test:e2e` 已接入 Playwright，包含工作台 smoke 用例；CI 会安装 Chromium 后执行。
-- `lint` 已接入 ESLint；当前关闭了 `preserve-caught-error` 和 `no-useless-escape`，避免把既有错误包装和正则写法变成大范围重构。
-- release workflow 已提供 npm Trusted Publishing 发布入口，真实发布依赖 npm 包侧配置匹配的 Trusted Publisher。
 - 多模型 fallback 已支持 `provider=auto`，但每个 provider 的独立 API Key / model UI 尚未展开。
 - 暂未支持多人协作或远程仓库托管。
-
-下一版建议：TypeScript 类型系统级调用解析、更完整 Playwright 关键路径测试、SQLite 查询 UI、多人协作。

@@ -15,8 +15,8 @@ import {
 } from './sqlite-store.js';
 
 test('sqlite mirror stores scan, report, ask, verification and graph records when node:sqlite is available', async () => {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codeatlas-sqlite-'));
-  process.env.PFO_SQLITE_PATH = path.join(root, 'codeatlas.db');
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codemap-ai-sqlite-'));
+  process.env.CODEMAP_AI_SQLITE_PATH = path.join(root, 'codemap-ai.db');
   const projectDir = path.join(root, 'project');
   await fs.mkdir(projectDir);
 

@@ -152,13 +152,13 @@ export function SettingsPage({
         </Field>
         <Field label="Model">
           {config.provider === 'custom'
-            ? <Input name="pfo-model" value={config.model} autoComplete="off" onChange={(event) => onConfigChange({ ...config, model: event.target.value })} />
-            : <Select name="pfo-model" value={config.model} autoComplete="off" onChange={(event) => onConfigChange({ ...config, model: event.target.value })}>
+            ? <Input name="codemap-ai-model" value={config.model} autoComplete="off" onChange={(event) => onConfigChange({ ...config, model: event.target.value })} />
+            : <Select name="codemap-ai-model" value={config.model} autoComplete="off" onChange={(event) => onConfigChange({ ...config, model: event.target.value })}>
               {modelOptions(config.provider, config.model).map((model) => <option key={model} value={model}>{model}</option>)}
             </Select>}
         </Field>
         <Field label="API Key">
-          <Input name="pfo-api-key" value={config.apiKey} type="text" autoComplete="off" spellCheck={false} className="[-webkit-text-security:disc]" onChange={(event) => updateConfig({ ...config, apiKey: event.target.value })} />
+          <Input name="codemap-ai-api-key" value={config.apiKey} type="text" autoComplete="off" spellCheck={false} className="[-webkit-text-security:disc]" onChange={(event) => updateConfig({ ...config, apiKey: event.target.value })} />
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Temperature">

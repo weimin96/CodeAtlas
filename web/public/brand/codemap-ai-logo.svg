@@ -31,15 +31,19 @@
       </feMerge>
     </filter>
   </defs>
+
   <rect width="160" height="160" rx="32" fill="url(#codemap-bg)"/>
   <rect width="160" height="160" rx="32" fill="url(#codemap-orbit)"/>
   <path d="M32 33H58M32 33V59M128 33H102M128 33V59M32 127H58M32 127V101M128 127H102M128 127V101" stroke="#DDE7FF" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" opacity="0.72"/>
+
   <path d="M45 78C53 57 66 44 80 39C94 44 107 57 115 78C107 99 94 116 80 121C66 116 53 99 45 78Z" stroke="#34456F" stroke-width="2.4" opacity="0.72"/>
   <path d="M58 80C64 66 72 57 80 53C88 57 96 66 102 80C96 94 88 103 80 107C72 103 64 94 58 80Z" stroke="#425780" stroke-width="2" opacity="0.78"/>
   <path d="M80 39V121M45 78H115M56 53C67 60 93 60 104 53M56 107C67 100 93 100 104 107" stroke="#2B365E" stroke-width="1.7" opacity="0.84"/>
+
   <path d="M50 104L80 36L110 104M61 80H99" stroke="url(#codemap-line)" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round" filter="url(#codemap-glow)"/>
   <path d="M52 104H36V86M108 104H124V86" stroke="url(#codemap-accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M61 80L80 36L99 80M61 80L52 104M99 80L108 104" stroke="#EAF7FF" stroke-width="1.7" stroke-linecap="round" opacity="0.72"/>
+
   <circle cx="80" cy="36" r="6.5" fill="#F8FAFF" filter="url(#codemap-glow)"/>
   <circle cx="61" cy="80" r="5.5" fill="#22D3EE"/>
   <circle cx="99" cy="80" r="5.5" fill="#A78BFA"/>

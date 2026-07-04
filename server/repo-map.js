@@ -55,7 +55,7 @@ function isEntrypointFile(file) {
   const lower = file.path.toLowerCase();
   const base = path.posix.basename(lower);
   return file.priority === 'P0'
-    || /(^|\/)(main|index|server|app|cli|pfo)\.(ts|tsx|js|jsx|mjs|cjs|py|go|java)$/i.test(lower)
+    || /(^|\/)(main|index|server|app|cli|codemap-ai)\.(ts|tsx|js|jsx|mjs|cjs|py|go|java)$/i.test(lower)
     || /routes?|api|controllers?|handlers?|pages|workers?|jobs?|consumers?/.test(lower)
     || ['package.json', 'docker-compose.yml', 'docker-compose.yaml'].includes(base);
 }

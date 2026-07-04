@@ -13,7 +13,7 @@ No build step; the CLI runs server JS files directly (ESM, `.js` extension). The
 ## Architecture
 
 ```
-bin/pfo.js          → CLI entry (Commander), calls server/startServer
+bin/codemap-ai.js   → CLI entry (Commander), calls server/startServer
 server/server.js    → Express app, all API routes, Vite middleware
 server/scanner.js   → File walker: classifies roles, priorities, extracts symbols, builds repo map
 server/symbol-indexer.js → Regex-based symbol extraction (JS/TS, Python, Go, Java); no Tree-sitter dependency
@@ -21,15 +21,15 @@ server/ai.js        → AI SDK wrapper: OpenAI, OpenAI-compatible, Ollama; analy
 server/heuristic.js → Offline heuristic report builder (no AI needed)
 server/repo-map.js  → Ranks files by importance, groups into modules, builds compact RepoMap
 server/context-pack.js → Selects files within char budget, builds Markdown context pack for AI
-server/ignore-rules.js → .gitignore / pfo.ignore parser (basic glob, negation, directory-only)
-server/config-store.js  → Reads/writes ~/.project-fast-onboarding/config.json, merges with env vars
+server/ignore-rules.js → .gitignore / codemap-ai.ignore parser (basic glob, negation, directory-only)
+server/config-store.js  → Reads/writes ~/.codemap-ai/config.json, merges with env vars
 server/fs-utils.js  → Safe file I/O, path sanitization, text/binary detection
 web/                → Vite + React + TypeScript SPA (Monaco, Mermaid, Tailwind, shadcn-style)
 ```
 
 ## Data flow
 
-1. `bin/pfo.js` parses args → `startServer({ projectDir, port, host })`
+1. `bin/codemap-ai.js` parses args → `startServer({ projectDir, port, host })`
 2. `server.js` creates Express app, mounts Vite middleware, defines routes
 3. First `/api/project` call triggers `scanProject(root)` — walks directory tree, classifies files, extracts symbols, builds `repoMap`
 4. Scan result cached in memory; `/api/rescan` clears and rebuilds
@@ -44,7 +44,7 @@ web/                → Vite + React + TypeScript SPA (Monaco, Mermaid, Tailwind
 - AI response is parsed as JSON through `parseJsonResult()` which strips markdown fences and tries regex fallback
 - Symbol indexing uses regex, not Tree-sitter; covers JS/TS, Python, Go, Java
 - File roles and priorities are determined by path heuristics (ENTRY_PATTERNS, CONFIG_NAMES, PRIORITY_DIR_KEYWORDS)
-- Config resolution order: CLI args > pfo.config.json > env vars > Web UI setting
+- Config resolution order: CLI args > codemap-ai.config.json > env vars > Web UI setting
 - The AI provider model is created on every call — no pooling or caching
 
 ## 务必遵守的规范

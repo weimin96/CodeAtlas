@@ -3,8 +3,8 @@ import path from 'node:path';
 import os from 'node:os';
 import crypto from 'node:crypto';
 
-const DB_DIR = path.join(os.homedir(), '.project-fast-onboarding');
-const DEFAULT_DB_PATH = path.join(DB_DIR, 'codeatlas.db');
+const DB_DIR = path.join(os.homedir(), '.codemap-ai');
+const DEFAULT_DB_PATH = path.join(DB_DIR, 'codemap-ai.db');
 
 export async function recordScanRun(projectDir, scan) {
   return writeRecord((db) => {
@@ -103,7 +103,7 @@ async function readRecord(action, fallback) {
 }
 
 async function openDatabaseIfAvailable() {
-  if (process.env.PFO_DISABLE_SQLITE === '1') return null;
+  if (process.env.CODEMAP_AI_DISABLE_SQLITE === '1') return null;
   let sqlite;
   try {
     sqlite = await import('node:sqlite');
@@ -183,7 +183,7 @@ function count(db, table, key) {
 }
 
 function databasePath() {
-  return process.env.PFO_SQLITE_PATH || DEFAULT_DB_PATH;
+  return process.env.CODEMAP_AI_SQLITE_PATH || DEFAULT_DB_PATH;
 }
 
 function projectKey(projectDir) {

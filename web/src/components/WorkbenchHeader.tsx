@@ -25,7 +25,7 @@ export function WorkbenchHeader({
     <div className="flex items-center gap-3">
       <div className="rounded-lg bg-primary text-primary-foreground p-2"><BrainCircuit size={18} /></div>
       <div>
-        <div className="font-semibold">Project Fast Onboarding</div>
+        <div className="font-semibold">codemap-ai</div>
         <div className="text-xs text-muted-foreground truncate max-w-[720px]">{projectDir || 'Loading project...'}</div>
       </div>
     </div>

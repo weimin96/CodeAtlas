@@ -2,7 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { toPosix } from './fs-utils.js';
 
-const IGNORE_FILES = ['.gitignore', 'pfo.ignore'];
+const IGNORE_FILES = ['.gitignore', 'codemap-ai.ignore'];
 
 export async function loadIgnoreRules(root) {
   const rules = [];

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const port = Number(process.env.PFO_E2E_PORT || 3107);
+const port = Number(process.env.CODEMAP_AI_E2E_PORT || 3107);
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
@@ -17,11 +17,11 @@ export default defineConfig({
     trace: 'on-first-retry'
   },
   webServer: {
-    command: `node bin/pfo.js . --port ${port} --no-open`,
+    command: `node bin/codemap-ai.js . --port ${port} --no-open`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { ...process.env, PFO_DISABLE_SQLITE: '1' }
+    env: { ...process.env, CODEMAP_AI_DISABLE_SQLITE: '1' }
   },
   projects: [
     {

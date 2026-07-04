@@ -4,7 +4,7 @@ import os from 'node:os';
 import crypto from 'node:crypto';
 import { exists } from './fs-utils.js';
 
-const REPORT_DIR = path.join(os.homedir(), '.project-fast-onboarding', 'reports');
+const REPORT_DIR = path.join(os.homedir(), '.codemap-ai', 'reports');
 
 export async function readProjectReport(projectDir) {
   const filePath = reportFilePath(projectDir);

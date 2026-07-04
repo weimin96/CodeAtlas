@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { AiConfig, AskAnswer, AskThreadEntry, CodeGraph, CoreFlow, FilePayload, ProjectPayload, Report, ScanFile, SymbolInfo, VerificationStatus } from '@/types';
 
-const ASK_THREADS_STORAGE_KEY = 'codeatlas.askThreads.v1';
+const ASK_THREADS_STORAGE_KEY = 'codemap-ai.askThreads.v1';
 
 const defaultConfig: AiConfig = {
   provider: 'openai-compatible',

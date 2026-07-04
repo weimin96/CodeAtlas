@@ -4,7 +4,7 @@ import os from 'node:os';
 import { exists } from './fs-utils.js';
 import { decryptSecret, encryptSecret } from './config-crypto.js';
 
-const CONFIG_DIR = path.join(os.homedir(), '.project-fast-onboarding');
+const CONFIG_DIR = path.join(os.homedir(), '.codemap-ai');
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 export async function readConfig() {
@@ -62,12 +62,12 @@ async function encodeStoredConfig(config) {
 }
 
 function envConfig() {
-  const provider = process.env.PFO_AI_PROVIDER || 'openai-compatible';
+  const provider = process.env.CODEMAP_AI_PROVIDER || 'openai-compatible';
   return {
     provider,
-    baseURL: process.env.PFO_AI_BASE_URL || process.env.OPENAI_BASE_URL || defaultBaseURL(provider),
-    model: process.env.PFO_AI_MODEL || process.env.OPENAI_MODEL || defaultModel(provider),
-    apiKey: process.env.PFO_AI_API_KEY || process.env.OPENAI_API_KEY || ''
+    baseURL: process.env.CODEMAP_AI_BASE_URL || process.env.OPENAI_BASE_URL || defaultBaseURL(provider),
+    model: process.env.CODEMAP_AI_MODEL || process.env.OPENAI_MODEL || defaultModel(provider),
+    apiKey: process.env.CODEMAP_AI_API_KEY || process.env.OPENAI_API_KEY || ''
   };
 }
 

@@ -48,7 +48,7 @@ export default function App() {
     const zip = new JSZip();
     for (const name of names) zip.file(name, data?.docs?.[name] || '');
     const blob = await zip.generateAsync({ type: 'blob' });
-    downloadBlob('codeatlas-onboarding-docs.zip', blob);
+    downloadBlob('codemap-ai-onboarding-docs.zip', blob);
   }
 
   function openFlowStep(step: FlowStep) {

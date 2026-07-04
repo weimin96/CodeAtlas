@@ -7,10 +7,10 @@ import { createOllama } from 'ollama-ai-provider-v2';
 globalThis.AI_SDK_LOG_WARNINGS = false;
 
 export function modelFromConfig(config = {}) {
-  const provider = config.provider || process.env.PFO_AI_PROVIDER || 'openai-compatible';
-  const modelName = config.model || process.env.OPENAI_MODEL || process.env.PFO_AI_MODEL || defaultModel(provider);
-  const apiKey = config.apiKey || process.env.OPENAI_API_KEY || process.env.PFO_AI_API_KEY;
-  const baseURL = config.baseURL || process.env.OPENAI_BASE_URL || process.env.PFO_AI_BASE_URL;
+  const provider = config.provider || process.env.CODEMAP_AI_PROVIDER || 'openai-compatible';
+  const modelName = config.model || process.env.OPENAI_MODEL || process.env.CODEMAP_AI_MODEL || defaultModel(provider);
+  const apiKey = config.apiKey || process.env.OPENAI_API_KEY || process.env.CODEMAP_AI_API_KEY;
+  const baseURL = config.baseURL || process.env.OPENAI_BASE_URL || process.env.CODEMAP_AI_BASE_URL;
 
   if (provider === 'openai') {
     const openai = createOpenAI({ apiKey, baseURL });
@@ -89,9 +89,9 @@ async function generateTextWithFallback({ config, system, prompt, temperature })
 }
 
 export function modelConfigCandidates(config = {}) {
-  const provider = config.provider || process.env.PFO_AI_PROVIDER || 'openai-compatible';
+  const provider = config.provider || process.env.CODEMAP_AI_PROVIDER || 'openai-compatible';
   if (provider !== 'auto') return [{ ...config, provider }];
-  const order = String(config.providerPriority || process.env.PFO_AI_PROVIDER_PRIORITY || 'ollama,openai-compatible,openrouter,openai')
+  const order = String(config.providerPriority || process.env.CODEMAP_AI_PROVIDER_PRIORITY || 'ollama,openai-compatible,openrouter,openai')
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
@@ -119,7 +119,7 @@ function providerModelForAuto(config, provider) {
 function providerApiKeyForAuto(config, provider) {
   if (config.apiKeys?.[provider]) return config.apiKeys[provider];
   if (provider === 'ollama') return '';
-  return config.apiKey || process.env.PFO_AI_API_KEY || process.env.OPENAI_API_KEY;
+  return config.apiKey || process.env.CODEMAP_AI_API_KEY || process.env.OPENAI_API_KEY;
 }
 
 const SYSTEM_PROMPT = `你是“项目快速接管工作台”的代码理解引擎。用户刚接手陌生项目，需要先通过你建立第一版项目地图，然后本人快速验证。

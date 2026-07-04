@@ -1,20 +1,18 @@
 {
   "name": "@codemapai/codemap-ai",
   "version": "0.2.0",
-  "description": "CodeAtlas local AI project onboarding workbench with code preview, code graph, flow maps, risk radar, and context-bound Q&A.",
+  "description": "codemap-ai local AI project onboarding workbench with code preview, code graph, flow maps, risk radar, and context-bound Q&A.",
   "type": "module",
   "packageManager": "pnpm@10.24.0",
   "bin": {
-    "codeatlas": "bin/pfo.js",
-    "pfo": "bin/pfo.js",
-    "project-fast-onboarding": "bin/pfo.js"
+    "codemap-ai": "bin/codemap-ai.js"
   },
   "files": [
-    "bin",
+    "bin/codemap-ai.js",
     "server",
     "web/index.html",
     "web/src",
-    "web/public",
+    "web/public/brand/codemap-ai-logo.svg",
     "web/vite.config.ts",
     "web/tsconfig.json",
     "web/components.json",
@@ -23,8 +21,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "node bin/pfo.js . --port 3000",
-    "start": "node bin/pfo.js .",
+    "dev": "node bin/codemap-ai.js . --port 3000",
+    "start": "node bin/codemap-ai.js .",
     "build": "vite build web --config web/vite.config.ts",
     "typecheck": "tsc -p web/tsconfig.json --noEmit",
     "test": "node --test server/*.test.js",

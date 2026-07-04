@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test';
 
-test('loads the CodeAtlas workbench shell and navigates key pages', async ({ page }) => {
+test('loads the codemap-ai workbench shell and navigates key pages', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page).toHaveTitle(/CodeAtlas Workbench/);
-  await expect(page.getByAltText('CODEATLAS')).toBeVisible();
+  await expect(page).toHaveTitle(/codemap-ai Workbench/);
+  await expect(page.getByLabel('codemap-ai')).toBeVisible();
   await expect(page.getByRole('button', { name: '项目总览' })).toBeVisible();
   await expect(page.getByRole('button', { name: '代码图谱' })).toBeVisible();
   await expect(page.getByRole('button', { name: '接管文档' })).toBeVisible();

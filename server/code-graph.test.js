@@ -7,7 +7,7 @@ import { buildCodeGraph, findShortestPath } from './code-graph.js';
 import { extractSymbols } from './symbol-indexer.js';
 
 async function createFixture(files) {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'pfo-graph-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codemap-ai-graph-'));
   const scanFiles = [];
   for (const [relPath, content] of Object.entries(files)) {
     const absolute = path.join(root, relPath);

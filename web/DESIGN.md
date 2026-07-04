@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: Project Fast Onboarding Workbench
+name: codemap-ai workbench
 description: "项目快速接管工作台的设计系统。用于生成简洁、扁平、克制的本地代码项目理解工作台界面。"
 colors:
   primary: "#2563EB"
@@ -236,7 +236,7 @@ components:
     padding: 16px
 ---
 
-# Project Fast Onboarding Workbench DESIGN.md
+# codemap-ai workbench DESIGN.md
 
 ## Overview
 
