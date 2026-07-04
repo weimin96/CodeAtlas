@@ -28,11 +28,36 @@ const CONFIG_NAMES = new Set([
   'pom.xml', 'build.gradle', 'settings.gradle', 'schema.prisma', '.env.example'
 ]);
 
+const DEFAULT_SCAN_OPTIONS = {
+  maxDepth: 8,
+  maxFiles: 20_000,
+  maxBytesTotal: 512 * 1024 * 1024
+};
+
 const PRIORITY_DIR_KEYWORDS = [
   'src', 'app', 'server', 'api', 'routes', 'controllers', 'handlers', 'services', 'service',
   'domain', 'usecases', 'usecase', 'repositories', 'repository', 'models', 'model', 'schema',
   'db', 'database', 'prisma', 'migrations', 'jobs', 'workers', 'queue', 'auth', 'middlewares'
 ];
+
+function createScanState() {
+  return { fileCount: 0, bytesTotal: 0, skippedFiles: [] };
+}
+
+function normalizeScanOptions(options = {}) {
+  return {
+    maxDepth: normalizePositiveInteger(options.maxDepth, DEFAULT_SCAN_OPTIONS.maxDepth, 'maxDepth'),
+    maxFiles: normalizePositiveInteger(options.maxFiles, DEFAULT_SCAN_OPTIONS.maxFiles, 'maxFiles'),
+    maxBytesTotal: normalizePositiveInteger(options.maxBytesTotal, DEFAULT_SCAN_OPTIONS.maxBytesTotal, 'maxBytesTotal')
+  };
+}
+
+function normalizePositiveInteger(value, fallback, name) {
+  if (value === undefined || value === null) return fallback;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed <= 0) throw new Error(`Invalid scan option ${name}: ${value}`);
+  return parsed;
+}
 
 function fileRole(relPath) {
   const p = relPath.toLowerCase();
@@ -59,8 +84,11 @@ function filePriority(relPath) {
   return 'P3';
 }
 
-async function walk(root, dir = '', depth = 0, maxDepth = 8, result = [], shouldIgnore = () => false) {
-  if (depth > maxDepth) return result;
+async function walk(root, dir = '', depth = 0, options = DEFAULT_SCAN_OPTIONS, state = createScanState(), result = [], shouldIgnore = () => false) {
+  if (depth > options.maxDepth) {
+    state.skippedFiles.push({ path: toPosix(dir) || '.', reason: 'maxDepth' });
+    return result;
+  }
   const absolute = path.join(root, dir);
   const entries = await readDirectoryEntries(absolute, dir || '.');
   entries.sort((a, b) => Number(b.isDirectory()) - Number(a.isDirectory()) || a.name.localeCompare(b.name));
@@ -73,10 +101,20 @@ async function walk(root, dir = '', depth = 0, maxDepth = 8, result = [], should
     if (entry.isSymbolicLink()) continue;
     if (entry.isDirectory()) {
       if (!ignored) result.push({ path: posix, type: 'dir', depth, role: guessDirRole(posix), priority: guessDirPriority(posix) });
-      await walk(root, rel, depth + 1, maxDepth, result, shouldIgnore);
+      await walk(root, rel, depth + 1, options, state, result, shouldIgnore);
     } else if (entry.isFile()) {
       const absoluteFile = path.join(root, rel);
       const stat = await fs.stat(absoluteFile);
+      if (state.fileCount >= options.maxFiles) {
+        state.skippedFiles.push({ path: posix, reason: 'maxFiles' });
+        continue;
+      }
+      if (state.bytesTotal + stat.size > options.maxBytesTotal) {
+        state.skippedFiles.push({ path: posix, reason: 'maxBytesTotal' });
+        continue;
+      }
+      state.fileCount += 1;
+      state.bytesTotal += stat.size;
       const language = languageFromPath(posix);
       const text = isProbablyText(absoluteFile);
       const symbols = text && canExtractSymbols(language)
@@ -135,9 +173,11 @@ export function languageFromPath(file) {
   })[ext] || 'plaintext';
 }
 
-export async function scanProject(root) {
+export async function scanProject(root, options = {}) {
+  const scanOptions = normalizeScanOptions(options);
+  const scanState = createScanState();
   const shouldIgnore = await loadIgnoreRules(root);
-  const items = await walk(root, '', 0, 8, [], shouldIgnore);
+  const items = await walk(root, '', 0, scanOptions, scanState, [], shouldIgnore);
   const files = items.filter((item) => item.type === 'file');
   const dirs = items.filter((item) => item.type === 'dir');
   const symbols = files.flatMap((file) => file.symbols || []);
@@ -151,6 +191,8 @@ export async function scanProject(root) {
     totalFiles: files.length,
     totalDirs: dirs.length,
     totalSymbols: symbols.length,
+    skippedFiles: scanState.skippedFiles,
+    scanLimits: scanOptions,
     tree: compactTree(items, 320),
     files,
     symbols,

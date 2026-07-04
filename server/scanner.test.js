@@ -28,3 +28,14 @@ test('scanProject honors gitignore negation inside ignored directories', async (
   assert.ok(paths.includes('dist/keep.js'));
   assert.equal(paths.includes('dist/ignored.js'), false);
 });
+
+test('scanProject supports maxFiles limit', async () => {
+  const root = await createProject({
+    'a.ts': 'export const a = 1;\n',
+    'b.ts': 'export const b = 1;\n',
+    'c.ts': 'export const c = 1;\n'
+  });
+  const scan = await scanProject(root, { maxFiles: 2 });
+  assert.equal(scan.totalFiles, 2);
+  assert.ok(scan.skippedFiles.some((file) => file.reason === 'maxFiles'));
+});
