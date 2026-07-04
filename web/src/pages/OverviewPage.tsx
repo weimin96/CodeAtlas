@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, Boxes, Clock3, Cloud, FileCode2, Gauge, PlayCircle, ShieldCheck } from 'lucide-react';
+import { ArrowRight, Boxes, Clock3, Cloud, FileCode2, Gauge, GitFork, ListChecks, PlayCircle, Route, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { ActionItem } from '@/components/common/ActionItem';
 import { MermaidPanel } from '@/components/MermaidPanel';
 import { ConfidenceBadge, EmptyState, LinkButton, PriorityBadge, RiskBadge, SectionTitle, StatCard } from '@/components/PageBlocks';
@@ -13,6 +13,7 @@ export function OverviewPage({ payload, report, codeGraph, onNavigate }: { paylo
   const quality = report?.analysisQuality;
   const highRisks = report?.risks?.filter((risk) => risk.level === 'high').length || 0;
   const warningSummary = buildWarningSummary(report, codeGraph);
+  const nextSteps = buildNextSteps(report, highRisks);
   return <div className="space-y-4">
     <Card className="overflow-hidden border-blue-100 bg-gradient-to-br from-white to-blue-50/60">
       <CardContent className="grid grid-cols-[1.35fr_1fr] gap-6 p-6">
@@ -47,6 +48,30 @@ export function OverviewPage({ payload, report, codeGraph, onNavigate }: { paylo
             <WarningMetric label="parse error" value={warningSummary.parseError} />
             <WarningMetric label="跳过大文件" value={warningSummary.largeSkipped} />
           </div>
+        </div>
+      </CardContent>
+    </Card>
+
+    <Card>
+      <CardContent className="p-5">
+        <SectionTitle title="下一步建议" description="按接管顺序继续，不需要先读完整报告。" />
+        <div className="grid grid-cols-3 gap-3">
+          {nextSteps.map((step) => <ActionItem key={step.title} onClick={() => onNavigate(step.page)} className="rounded-xl bg-white p-4 text-sm">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-700">{step.icon}</div>
+              <div className="min-w-0">
+                <div className="font-semibold text-slate-950">{step.title}</div>
+                <div className="mt-1 text-sm leading-6 text-slate-600">{step.description}</div>
+              </div>
+              <ArrowRight size={16} className="ml-auto mt-1 shrink-0 text-blue-600" />
+            </div>
+          </ActionItem>)}
+        </div>
+        <div className="mt-4 grid grid-cols-4 gap-2 text-sm">
+          <EvidenceShortcut icon={<Boxes size={15} />} label="模块证据" value={report?.modules?.length || 0} onClick={() => onNavigate('modules')} />
+          <EvidenceShortcut icon={<Route size={15} />} label="链路证据" value={report?.flows?.length || 0} onClick={() => onNavigate('flows')} />
+          <EvidenceShortcut icon={<ShieldAlert size={15} />} label="风险证据" value={report?.risks?.length || 0} onClick={() => onNavigate('risks')} />
+          <EvidenceShortcut icon={<GitFork size={15} />} label="代码图谱" value={codeGraph?.totals?.warnings || 0} suffix="告警" onClick={() => onNavigate('graph')} />
         </div>
       </CardContent>
     </Card>
@@ -131,6 +156,38 @@ export function OverviewPage({ payload, report, codeGraph, onNavigate }: { paylo
       </CardContent>
     </Card>
   </div>;
+}
+
+function EvidenceShortcut({ icon, label, value, suffix, onClick }: { icon: ReactNode; label: string; value: number; suffix?: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className="flex items-center justify-between rounded-lg border bg-slate-50 px-3 py-2 text-left transition-colors hover:border-blue-200 hover:bg-blue-50/40">
+    <span className="flex items-center gap-2 text-slate-600">{icon}{label}</span>
+    <span className="font-semibold text-slate-950">{value}{suffix ? ` ${suffix}` : ''}</span>
+  </button>;
+}
+
+function buildNextSteps(report: Report | null, highRisks: number): Array<{ title: string; description: string; page: PageId; icon: ReactNode }> {
+  const firstPlan = report?.readingPlan?.[0];
+  const firstFlow = report?.flows?.[0];
+  return [
+    {
+      title: firstPlan ? `先看 ${firstPlan.timebox} 阅读路线` : '先看 30 分钟阅读路线',
+      description: firstPlan?.goal || '用最短路径理解项目入口、核心模块和第一批关键文件。',
+      page: 'history',
+      icon: <ListChecks size={17} />
+    },
+    {
+      title: highRisks ? `验证 ${Math.min(highRisks, 3)} 个高风险` : '确认当前风险队列',
+      description: highRisks ? '优先查看高风险证据、验证步骤和建议测试。' : '查看 AI 标出的风险是否需要确认、驳回或标记过期。',
+      page: 'risks',
+      icon: <ShieldAlert size={17} />
+    },
+    {
+      title: firstFlow ? `打开核心链路：${firstFlow.name}` : '打开第一条核心链路',
+      description: firstFlow?.trigger || '从触发点、执行步骤和代码证据开始验证真实运行顺序。',
+      page: 'flows',
+      icon: <Route size={17} />
+    }
+  ];
 }
 
 function WarningMetric({ label, value }: { label: string; value: number }) {
