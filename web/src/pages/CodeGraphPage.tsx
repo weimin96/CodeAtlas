@@ -5,7 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, SectionTitle, StatCard } from '@/components/PageBlocks';
-import type { CodeGraph, CodeGraphNode } from '@/types';
+import type { CodeGraph, CodeGraphEdge, CodeGraphNode } from '@/types';
+
+type InspectorTab = 'overview' | 'why' | 'warnings' | 'code';
 
 export function CodeGraphPage({ graph, loading, onLoadGraph, onOpenFile }: {
   graph: CodeGraph | null;
@@ -15,6 +17,8 @@ export function CodeGraphPage({ graph, loading, onLoadGraph, onOpenFile }: {
 }) {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState('');
+  const [targetId, setTargetId] = useState('');
+  const [tab, setTab] = useState<InspectorTab>('overview');
 
   useEffect(() => {
     if (!graph && loading !== 'code-graph') onLoadGraph();
@@ -23,6 +27,7 @@ export function CodeGraphPage({ graph, loading, onLoadGraph, onOpenFile }: {
   const nodes = graph?.nodes || [];
   const edges = graph?.edges || [];
   const selectedNode = nodes.find((node) => node.id === selectedId) || nodes[0] || null;
+  const targetNode = nodes.find((node) => node.id === targetId) || nodes.find((node) => node.id !== selectedNode?.id && node.type !== 'directory') || null;
   const visibleNodes = useMemo(() => {
     const keyword = query.trim().toLowerCase();
     const candidates = nodes.filter((node) => node.type !== 'directory');
@@ -30,6 +35,8 @@ export function CodeGraphPage({ graph, loading, onLoadGraph, onOpenFile }: {
     return candidates.filter((node) => `${node.name} ${node.path || ''}`.toLowerCase().includes(keyword)).slice(0, 80);
   }, [nodes, query]);
   const relatedEdges = selectedNode ? edges.filter((edge) => edge.source === selectedNode.id || edge.target === selectedNode.id).slice(0, 80) : [];
+  const selectedWarnings = selectedNode?.path ? graph?.warnings.filter((warning) => warning.path === selectedNode.path) || [] : [];
+  const connection = selectedNode && targetNode ? shortestPath(edges, selectedNode.id, targetNode.id) : [];
 
   if (!graph) return <div className="space-y-4">
     <SectionTitle title="代码图谱" description="基于 JS/TS 静态扫描构建文件、符号、导入和调用关系。" />
@@ -70,22 +77,77 @@ export function CodeGraphPage({ graph, loading, onLoadGraph, onOpenFile }: {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">关系视图</CardTitle></CardHeader>
+        <CardHeader className="space-y-3">
+          <CardTitle className="text-base">当前对象 Inspector</CardTitle>
+          <div className="flex flex-wrap gap-2">
+            {(['overview', 'why', 'warnings', 'code'] as InspectorTab[]).map((item) => <Button key={item} type="button" size="sm" variant={tab === item ? 'default' : 'outline'} onClick={() => setTab(item)}>{tabLabel(item)}</Button>)}
+          </div>
+        </CardHeader>
         <CardContent>
-          {!selectedNode && <EmptyState text="选择左侧节点查看关系" />}
-          {selectedNode && <div className="space-y-4">
-            <div className="rounded-xl border bg-slate-50 p-4">
-              <div className="text-base font-semibold text-slate-950">{selectedNode.name}</div>
-              <div className="mt-1 font-mono text-xs text-slate-500">{selectedNode.id}</div>
-              {selectedNode.path && <Button className="mt-3" variant="outline" size="sm" onClick={() => onOpenFile(selectedNode.path || '', selectedNode.startLine)}>打开代码</Button>}
-            </div>
-            <div className="space-y-2">
-              {relatedEdges.map((edge) => <GraphEdgeRow key={`${edge.source}-${edge.target}-${edge.type}-${edge.line || ''}`} edge={edge} nodes={nodes} selectedId={selectedNode.id} />)}
-              {!relatedEdges.length && <EmptyState text="该节点暂无直接关系" />}
-            </div>
-          </div>}
+          {!selectedNode && <EmptyState text="选择左侧节点查看详情" />}
+          {selectedNode && tab === 'overview' && <OverviewInspector node={selectedNode} edges={relatedEdges} nodes={nodes} onOpenFile={onOpenFile} />}
+          {selectedNode && tab === 'why' && <WhyInspector nodes={nodes} selectedNode={selectedNode} targetNode={targetNode} targetId={targetId} connection={connection} onTargetChange={setTargetId} />}
+          {selectedNode && tab === 'warnings' && <WarningsInspector warnings={selectedWarnings} />}
+          {selectedNode && tab === 'code' && <CodeInspector node={selectedNode} onOpenFile={onOpenFile} />}
         </CardContent>
       </Card>
+    </div>
+  </div>;
+}
+
+function OverviewInspector({ node, edges, nodes, onOpenFile }: { node: CodeGraphNode; edges: CodeGraphEdge[]; nodes: CodeGraphNode[]; onOpenFile: (path: string, line?: number) => void }) {
+  return <div className="space-y-4">
+    <NodeSummary node={node} onOpenFile={onOpenFile} />
+    <div className="space-y-2">
+      {edges.map((edge) => <GraphEdgeRow key={`${edge.source}-${edge.target}-${edge.type}-${edge.line || ''}`} edge={edge} nodes={nodes} selectedId={node.id} />)}
+      {!edges.length && <EmptyState text="该节点暂无直接关系" />}
+    </div>
+  </div>;
+}
+
+function WhyInspector({ nodes, selectedNode, targetNode, targetId, connection, onTargetChange }: { nodes: CodeGraphNode[]; selectedNode: CodeGraphNode; targetNode: CodeGraphNode | null; targetId: string; connection: Array<{ from: string; to: string; edge: CodeGraphEdge }>; onTargetChange: (id: string) => void }) {
+  const candidates = nodes.filter((node) => node.type !== 'directory' && node.id !== selectedNode.id).slice(0, 200);
+  return <div className="space-y-4">
+    <div>
+      <label className="text-xs font-medium text-slate-500">目标节点</label>
+      <select value={targetId || targetNode?.id || ''} onChange={(event) => onTargetChange(event.target.value)} className="mt-2 h-10 w-full rounded-md border bg-white px-3 text-sm">
+        {candidates.map((node) => <option key={node.id} value={node.id}>{node.name} · {node.path || node.type}</option>)}
+      </select>
+    </div>
+    {targetNode && <div className="rounded-lg border bg-slate-50 p-3 text-sm text-slate-700">{selectedNode.name} 与 {targetNode.name} 的最短关联路径。</div>}
+    <div className="space-y-2">
+      {connection.map((item, index) => <PathRow key={`${item.from}-${item.to}-${index}`} item={item} nodes={nodes} />)}
+      {targetNode && !connection.length && <EmptyState text="未找到关联路径" />}
+    </div>
+  </div>;
+}
+
+function WarningsInspector({ warnings }: { warnings: CodeGraph['warnings'] }) {
+  if (!warnings.length) return <EmptyState text="当前文件暂无解析告警" />;
+  return <div className="space-y-2">
+    {warnings.map((warning, index) => <div key={`${warning.kind}-${index}`} className="rounded-lg border border-amber-100 bg-amber-50 p-3 text-sm text-amber-900">
+      <div className="font-medium">{warning.kind}</div>
+      <div className="mt-1">{warning.message}</div>
+    </div>)}
+  </div>;
+}
+
+function CodeInspector({ node, onOpenFile }: { node: CodeGraphNode; onOpenFile: (path: string, line?: number) => void }) {
+  return <div className="space-y-4">
+    <NodeSummary node={node} onOpenFile={onOpenFile} />
+    {node.path ? <Button variant="outline" onClick={() => onOpenFile(node.path || '', node.startLine)}>在代码浏览器中打开</Button> : <EmptyState text="目录节点没有可打开代码" />}
+  </div>;
+}
+
+function NodeSummary({ node, onOpenFile }: { node: CodeGraphNode; onOpenFile: (path: string, line?: number) => void }) {
+  return <div className="rounded-xl border bg-slate-50 p-4">
+    <div className="flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2"><div className="truncate text-base font-semibold text-slate-950">{node.name}</div><NodeBadge node={node} /></div>
+        <div className="mt-1 truncate font-mono text-xs text-slate-500">{node.id}</div>
+        {node.path && <div className="mt-1 truncate font-mono text-xs text-slate-500">{node.path}{node.startLine ? `:${node.startLine}` : ''}</div>}
+      </div>
+      {node.path && <Button variant="outline" size="sm" onClick={() => onOpenFile(node.path || '', node.startLine)}>打开代码</Button>}
     </div>
   </div>;
 }
@@ -95,7 +157,7 @@ function NodeBadge({ node }: { node: CodeGraphNode }) {
   return <Badge variant={variant}>{node.type}</Badge>;
 }
 
-function GraphEdgeRow({ edge, nodes, selectedId }: { edge: CodeGraph['edges'][number]; nodes: CodeGraphNode[]; selectedId: string }) {
+function GraphEdgeRow({ edge, nodes, selectedId }: { edge: CodeGraphEdge; nodes: CodeGraphNode[]; selectedId: string }) {
   const isOutgoing = edge.source === selectedId;
   const other = nodes.find((node) => node.id === (isOutgoing ? edge.target : edge.source));
   return <div className="flex items-start gap-3 rounded-lg border p-3">
@@ -105,4 +167,58 @@ function GraphEdgeRow({ edge, nodes, selectedId }: { edge: CodeGraph['edges'][nu
       {other?.path && <div className="mt-1 truncate font-mono text-xs text-slate-500">{other.path}{edge.line ? `:${edge.line}` : ''}</div>}
     </div>
   </div>;
+}
+
+function PathRow({ item, nodes }: { item: { from: string; to: string; edge: CodeGraphEdge }; nodes: CodeGraphNode[] }) {
+  const from = nodes.find((node) => node.id === item.from);
+  const to = nodes.find((node) => node.id === item.to);
+  return <div className="rounded-lg border p-3 text-sm">
+    <div className="font-medium text-slate-950">{from?.name || item.from} → {to?.name || item.to}</div>
+    <div className="mt-1 text-xs text-slate-500">关系：{item.edge.type}</div>
+  </div>;
+}
+
+function shortestPath(edges: CodeGraphEdge[], sourceId: string, targetId: string) {
+  if (!sourceId || !targetId || sourceId === targetId) return [];
+  const adjacency = new Map<string, Array<{ nodeId: string; edge: CodeGraphEdge }>>();
+  for (const edge of edges) {
+    addAdjacent(adjacency, edge.source, { nodeId: edge.target, edge });
+    addAdjacent(adjacency, edge.target, { nodeId: edge.source, edge });
+  }
+  const queue = [sourceId];
+  const visited = new Set([sourceId]);
+  const previous = new Map<string, { nodeId: string; edge: CodeGraphEdge }>();
+  while (queue.length) {
+    const current = queue.shift() || '';
+    for (const next of adjacency.get(current) || []) {
+      if (visited.has(next.nodeId)) continue;
+      visited.add(next.nodeId);
+      previous.set(next.nodeId, { nodeId: current, edge: next.edge });
+      if (next.nodeId === targetId) return rebuildPath(previous, sourceId, targetId);
+      queue.push(next.nodeId);
+    }
+  }
+  return [];
+}
+
+function addAdjacent(adjacency: Map<string, Array<{ nodeId: string; edge: CodeGraphEdge }>>, source: string, target: { nodeId: string; edge: CodeGraphEdge }) {
+  const list = adjacency.get(source) || [];
+  list.push(target);
+  adjacency.set(source, list);
+}
+
+function rebuildPath(previous: Map<string, { nodeId: string; edge: CodeGraphEdge }>, sourceId: string, targetId: string) {
+  const items: Array<{ from: string; to: string; edge: CodeGraphEdge }> = [];
+  let current = targetId;
+  while (current !== sourceId) {
+    const item = previous.get(current);
+    if (!item) return [];
+    items.unshift({ from: item.nodeId, to: current, edge: item.edge });
+    current = item.nodeId;
+  }
+  return items;
+}
+
+function tabLabel(tab: InspectorTab) {
+  return ({ overview: '概览', why: '为什么有关', warnings: '告警', code: '代码' })[tab];
 }

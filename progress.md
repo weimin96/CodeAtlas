@@ -13,3 +13,5 @@
 - 阶段 16 验证通过：node --check server/code-graph.js，npm run test。
 - 阶段 17 完成：新增 /api/code-graph，前端新增代码图谱导航、图谱加载状态、节点搜索和直接关系视图。
 - 阶段 17 验证通过：node --check server/server.js，npm run typecheck。
+- 阶段 18 完成：代码图谱页右侧升级为 Inspector，增加概览、为什么有关、告警、代码四个视图，并用最短路径解释节点关系。
+- 阶段 18 验证通过：npm run typecheck。

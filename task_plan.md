@@ -23,7 +23,7 @@
 | 15 | complete | 补测试/构建/发布脚本与 GitHub Actions | npm run typecheck；npm run test；npm run build |
 | 16 | complete | 新增 JS/TS Code Graph Layer：nodes/edges/warnings/shortest path | npm run test；node --check server/code-graph.js |
 | 17 | complete | 接入 /api/code-graph 与前端代码图谱页 | npm run typecheck；node --check server/server.js |
-| 18 | pending | 图谱 Inspector：Overview/Why Connected/Warnings/Code | npm run typecheck |
+| 18 | complete | 图谱 Inspector：Overview/Why Connected/Warnings/Code | npm run typecheck |
 | 19 | pending | AI JSON repair 一次重试 | npm run test；node --check server/ai.js |
 | 20 | pending | 人工确认状态类型与 normalizer 默认值 | npm run typecheck；npm run test |
 | 21 | pending | 导出正式 Markdown 文档集 | node --check server/document-exporter.js server/server.js |
