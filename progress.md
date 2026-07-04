@@ -11,3 +11,5 @@
 - 阶段 15 验证通过：npm run test，npm run typecheck，npm run build。
 - 阶段 16 完成：新增 server/code-graph.js，支持 JS/TS 文件、目录、符号、imports、calls、warnings 和 shortest path。
 - 阶段 16 验证通过：node --check server/code-graph.js，npm run test。
+- 阶段 17 完成：新增 /api/code-graph，前端新增代码图谱导航、图谱加载状态、节点搜索和直接关系视图。
+- 阶段 17 验证通过：node --check server/server.js，npm run typecheck。

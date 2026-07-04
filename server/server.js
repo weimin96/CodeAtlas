@@ -11,6 +11,7 @@ import { buildContextPack } from './context-pack.js';
 import { normalizeReport, summarizeContextPack } from './report-normalizer.js';
 import { enrichContext } from './context-enrichment.js';
 import { deleteProjectReport, readProjectReport, writeProjectReport } from './report-store.js';
+import { buildCodeGraph, findShortestPath } from './code-graph.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
@@ -19,7 +20,8 @@ const webRoot = path.join(packageRoot, 'web');
 let cache = {
   scan: null,
   report: null,
-  contextPack: null
+  contextPack: null,
+  codeGraph: null
 };
 
 export async function startServer({ projectDir, port, host }) {
@@ -81,6 +83,7 @@ export async function startServer({ projectDir, port, host }) {
       const storedReport = await readProjectReport(projectDir);
       cache.report = storedReport ? normalizeReport(storedReport, null, cache.scan) : null;
       cache.contextPack = null;
+      cache.codeGraph = null;
       res.json({ projectDir, scan: cache.scan, report: cache.report });
     } catch (error) { next(error); }
   });
@@ -108,6 +111,17 @@ export async function startServer({ projectDir, port, host }) {
         return res.send(JSON.stringify(cache.scan.repoMap || {}, null, 2));
       }
       res.json(cache.scan.repoMap || {});
+    } catch (error) { next(error); }
+  });
+
+  app.get('/api/code-graph', async (req, res, next) => {
+    try {
+      if (!cache.scan) cache.scan = await scanProject(projectDir);
+      if (!cache.codeGraph) cache.codeGraph = await buildCodeGraph({ root: projectDir, scan: cache.scan });
+      const sourceId = typeof req.query.sourceId === 'string' ? req.query.sourceId : '';
+      const targetId = typeof req.query.targetId === 'string' ? req.query.targetId : '';
+      const connection = sourceId && targetId ? findShortestPath(cache.codeGraph, sourceId, targetId) : [];
+      res.json({ graph: cache.codeGraph, connection });
     } catch (error) { next(error); }
   });
 

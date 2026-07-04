@@ -3,6 +3,7 @@ import type { OnMount } from '@monaco-editor/react';
 import { AppShell, type PageId } from '@/components/AppShell';
 import { AskPanel } from '@/components/AskPanel';
 import { CodeWorkspace } from '@/components/CodeWorkspace';
+import { CodeGraphPage } from '@/pages/CodeGraphPage';
 import { DataModelPage } from '@/pages/DataModelPage';
 import { FlowDetailPage } from '@/pages/FlowDetailPage';
 import { FlowPage } from '@/pages/FlowPage';
@@ -70,6 +71,11 @@ export default function App() {
     void workbench.openFile(path, reference?.startLine || risk.startLine);
   }
 
+  function openGraphFile(path: string, line?: number) {
+    setActivePage('code');
+    void workbench.openFile(path, line);
+  }
+
   function openSymbol(symbol: SymbolInfo) {
     workbench.setCurrentSymbol(symbol);
     workbench.setSelection({ startLine: symbol.startLine, endLine: symbol.endLine });
@@ -101,6 +107,7 @@ export default function App() {
     {activePage === 'flow-detail' && <FlowDetailPage report={workbench.report} activeFlow={workbench.activeFlow} onBack={() => setActivePage('flows')} onOpenStep={openFlowStep} />}
     {activePage === 'data' && <DataModelPage payload={workbench.payload} report={workbench.report} />}
     {activePage === 'risks' && <RiskPage report={workbench.report} activeRisk={workbench.activeRisk} onSelectRisk={workbench.setActiveRisk} onOpenRiskCode={openRiskCode} />}
+    {activePage === 'graph' && <CodeGraphPage graph={workbench.codeGraph} loading={workbench.loading} onLoadGraph={workbench.loadCodeGraph} onOpenFile={openGraphFile} />}
     {activePage === 'history' && <HistoryPage report={workbench.report} />}
     {activePage === 'code' && <div className="grid h-[calc(100vh-104px)] grid-cols-[minmax(680px,1fr)_380px] gap-4">
       <CodeWorkspace

@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
-import { Bot, Boxes, BrainCircuit, Code2, Database, FileClock, FileText, Home, Map, RefreshCw, Route, Settings, ShieldAlert, Sparkles, SquareCode } from 'lucide-react';
+import { Bot, Boxes, BrainCircuit, Code2, Database, FileClock, FileText, GitFork, Home, Map, RefreshCw, Route, Settings, ShieldAlert, Sparkles, SquareCode } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StepProgress, type ProgressStep } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import type { ProjectPayload } from '@/types';
 
-export type PageId = 'overview' | 'modules' | 'module-detail' | 'flows' | 'flow-detail' | 'data' | 'risks' | 'code' | 'history';
+export type PageId = 'overview' | 'modules' | 'module-detail' | 'flows' | 'flow-detail' | 'data' | 'risks' | 'graph' | 'code' | 'history';
 
 const navItems: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'overview', label: '项目总览', icon: Home },
@@ -13,6 +13,7 @@ const navItems: Array<{ id: PageId; label: string; icon: typeof Home }> = [
   { id: 'flows', label: '核心链路', icon: Route },
   { id: 'data', label: '数据模型', icon: Database },
   { id: 'risks', label: '风险雷达', icon: ShieldAlert },
+  { id: 'graph', label: '代码图谱', icon: GitFork },
   { id: 'code', label: '代码浏览器', icon: Code2 },
   { id: 'history', label: '追问历史', icon: FileClock }
 ];

@@ -4,6 +4,37 @@ export type Priority = 'P0' | 'P1' | 'P2' | 'P3';
 export type SymbolKind = 'function' | 'class' | 'method' | 'interface' | 'type' | 'constant';
 export type FlowKind = 'api' | 'page' | 'cli' | 'worker' | 'consumer' | 'job' | 'unknown' | string;
 
+export interface CodeGraphNode {
+  id: string;
+  type: string;
+  name: string;
+  path?: string;
+  startLine?: number;
+  endLine?: number;
+}
+
+export interface CodeGraphEdge {
+  source: string;
+  target: string;
+  type: string;
+  line?: number;
+}
+
+export interface CodeGraphWarning {
+  path: string;
+  kind: string;
+  message: string;
+}
+
+export interface CodeGraph {
+  generatedAt: string;
+  languageScope: string[];
+  totals: { nodes: number; edges: number; files: number; warnings: number };
+  nodes: CodeGraphNode[];
+  edges: CodeGraphEdge[];
+  warnings: CodeGraphWarning[];
+}
+
 export interface SymbolInfo {
   id: string;
   name: string;

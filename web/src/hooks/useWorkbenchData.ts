@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { AiConfig, AskAnswer, CoreFlow, FilePayload, ProjectPayload, Report, ScanFile, SymbolInfo } from '@/types';
+import type { AiConfig, AskAnswer, CodeGraph, CoreFlow, FilePayload, ProjectPayload, Report, ScanFile, SymbolInfo } from '@/types';
 
 const defaultConfig: AiConfig = {
   provider: 'openai-compatible',
@@ -22,6 +22,7 @@ export function useWorkbenchData() {
   const [loading, setLoading] = useState<string>('');
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<ScanFile[]>([]);
+  const [codeGraph, setCodeGraph] = useState<CodeGraph | null>(null);
 
   useEffect(() => {
     void initialize();
@@ -127,6 +128,18 @@ export function useWorkbenchData() {
     setResults(data.results);
   }
 
+  async function loadCodeGraph() {
+    setLoading('code-graph');
+    try {
+      const data = await requestJson<{ graph: CodeGraph }>('/api/code-graph');
+      setCodeGraph(data.graph);
+    } catch (error) {
+      setAnswer(`代码图谱加载失败：${formatError(error)}`);
+    } finally {
+      setLoading('');
+    }
+  }
+
   async function ask(nextQuestion?: string) {
     const finalQuestion = (nextQuestion || question).trim();
     if (!finalQuestion) return;
@@ -182,6 +195,7 @@ export function useWorkbenchData() {
     loading,
     search,
     results,
+    codeGraph,
     files,
     currentFileSymbols,
     openFile,
@@ -189,6 +203,7 @@ export function useWorkbenchData() {
     analyze,
     rescan,
     runSearch,
+    loadCodeGraph,
     ask
   };
 }
