@@ -225,6 +225,7 @@ API Key 优先可通过环境变量提供。通过页面保存时，配置写入
 - 追问线程、验证结论、图谱和解释缓存暂未 SQLite 化。
 - `/api/onboarding-docs` 暂未提供前端批量下载按钮。
 - `test:e2e` 脚本已预留，但 Playwright 用例尚未落地。
+- release workflow 已提供 npm provenance 发布入口，但真实发布依赖仓库配置 `NPM_TOKEN`。
 - 暂未支持多人协作或远程仓库托管。
 
 下一版建议：品牌命名统一、图谱持久化、解释缓存、前端文档集下载、Playwright 关键路径测试、SQLite 接管知识库。

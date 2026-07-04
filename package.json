@@ -1,7 +1,7 @@
 {
   "name": "project-fast-onboarding",
   "version": "0.5.1",
-  "description": "Local AI project onboarding workbench with code preview, flow maps, risk radar, and context-bound Q&A.",
+  "description": "CodeAtlas local AI project onboarding workbench with code preview, code graph, flow maps, risk radar, and context-bound Q&A.",
   "type": "module",
   "bin": {
     "pfo": "bin/pfo.js",
@@ -10,7 +10,13 @@
   "files": [
     "bin",
     "server",
-    "web",
+    "web/index.html",
+    "web/src",
+    "web/public",
+    "web/vite.config.ts",
+    "web/tsconfig.json",
+    "web/components.json",
+    "web/DESIGN.md",
     "README.md",
     "LICENSE"
   ],
@@ -23,6 +29,7 @@
     "test:e2e": "playwright test",
     "lint": "node --check bin/pfo.js && node --check server/*.js",
     "pack:local": "npm pack",
+    "release:dry-run": "npm pack --dry-run",
     "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "engines": {
@@ -57,15 +64,28 @@
   },
   "keywords": [
     "ai",
+    "code-atlas",
     "codebase",
+    "code-graph",
     "onboarding",
+    "project-understanding",
     "rag",
-    "vite",
     "react",
-    "tailwind",
-    "shadcn",
-    "mermaid"
+    "mermaid",
+    "monaco-editor"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/weimin96/CodeAtlas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/weimin96/CodeAtlas/issues"
+  },
+  "homepage": "https://github.com/weimin96/CodeAtlas#readme",
+  "publishConfig": {
+    "provenance": true,
+    "access": "public"
+  },
   "author": "",
   "license": "MIT"
 }
