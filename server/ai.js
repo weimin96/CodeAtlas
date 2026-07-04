@@ -79,6 +79,58 @@ export async function askWithAI({ question, context, config }) {
   return validateAskAnswer(parsed);
 }
 
+export async function analyzeOverviewWithAI({ scan, contextPack, config, signal }) {
+  return await generateStageJson({
+    config,
+    signal,
+    prompt: buildOverviewPrompt(scan, contextPack),
+    expectedSchema: 'overview analysis JSON',
+    validate: validateOverviewStage
+  });
+}
+
+export async function analyzeModulesWithAI({ scan, contextPack, candidates, config, signal }) {
+  return await generateStageJson({
+    config,
+    signal,
+    prompt: buildModulesPrompt(scan, contextPack, candidates),
+    expectedSchema: 'modules analysis JSON',
+    validate: validateModulesStage
+  });
+}
+
+export async function analyzeFlowsWithAI({ scan, contextPack, candidates, modules, config, signal }) {
+  return await generateStageJson({
+    config,
+    signal,
+    prompt: buildFlowsPrompt(scan, contextPack, candidates, modules),
+    expectedSchema: 'flows analysis JSON',
+    validate: validateFlowsStage
+  });
+}
+
+export async function analyzeRisksWithAI({ scan, contextPack, overview, modules, flows, config, signal }) {
+  return await generateStageJson({
+    config,
+    signal,
+    prompt: buildRisksPrompt(scan, contextPack, overview, modules, flows),
+    expectedSchema: 'risks analysis JSON',
+    validate: validateRisksStage
+  });
+}
+
+async function generateStageJson({ config, signal, prompt, expectedSchema, validate }) {
+  const result = await generateTextWithFallback({
+    config,
+    system: SYSTEM_PROMPT,
+    prompt,
+    temperature: 0.12,
+    signal
+  });
+  const parsed = await parseJsonResultWithRepair({ text: result.text, model: result.model, expectedSchema, timeoutMs: result.timeoutMs, signal });
+  return validate(parsed);
+}
+
 async function generateTextWithFallback({ config, system, prompt, temperature, signal }) {
   const candidates = modelConfigCandidates(config);
   const timeoutMs = resolveAiTimeoutMs(config);
@@ -283,6 +335,134 @@ ${JSON.stringify(context, null, 2)}
 请基于上下文回答。`;
 }
 
+function buildOverviewPrompt(scan, contextPack) {
+  return `你正在执行多阶段项目接管分析的第 1 阶段：项目总览。
+只基于 repoMap、目录树、关键入口和少量上下文文件输出 JSON。
+不要分析全部模块细节、完整链路和风险。
+
+输出 JSON 结构：
+{
+  "projectOverview": {"name":"", "type":"", "techStack":[], "startup":"", "confidence":"fact|guess|unknown", "summary":""},
+  "architecture": {"summary":"", "mermaid":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]},
+  "entrypoints": [{"name":"", "path":"", "kind":"", "confidence":"fact|guess|unknown", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+  "readingPlan": [{"timebox":"", "goal":"", "files":[], "output":""}],
+  "unknowns": [],
+  "mermaid": ""
+}
+
+约束：entrypoints 最多 8 个；readingPlan 最多 4 条；证据必须引用文件路径。
+
+扫描概况：files=${scan.totalFiles}, dirs=${scan.totalDirs}, symbols=${scan.totalSymbols || 0}
+Repo Map：
+${JSON.stringify(scan.repoMap || {}, null, 2)}
+目录树摘要：
+${JSON.stringify((scan.tree || []).slice(0, 180), null, 2)}
+关键文件：
+${formatKeyFiles(scan, 60)}
+上下文文件：
+${formatContextFiles(contextPack)}
+代码摘录：
+${formatCodeChunks(contextPack?.chunks || [], 9000)}`;
+}
+
+function buildModulesPrompt(scan, contextPack, candidates = []) {
+  return `你正在执行多阶段项目接管分析的模块阶段。
+只分析给定候选模块和本阶段上下文文件，输出业务模块，不要泛化为技术目录分类。
+
+输出 JSON 结构：
+{
+  "modules": [{
+    "id":"", "name":"", "paths":[], "summary":"", "responsibility":"", "responsibilities":[],
+    "businessCapabilities": [{"name":"", "description":"", "importance":"core|important|supporting", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+    "entrypoints": [{"name":"", "path":"", "kind":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+    "dependencies": [{"moduleId":"", "reason":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+    "dataEntities": [], "coreFlows": [], "keyFiles": [{"path":"", "reason":"", "confidence":"fact|guess|unknown"}],
+    "risks": [], "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown"
+  }]
+}
+
+约束：本批最多输出 3 个模块；证据必须来自本阶段上下文或候选文件。
+候选模块：
+${JSON.stringify(candidates, null, 2)}
+Repo Map 模块摘要：
+${JSON.stringify(scan.repoMap?.modules || [], null, 2)}
+上下文文件：
+${formatContextFiles(contextPack)}
+代码摘录：
+${formatCodeChunks(contextPack?.chunks || [], 12000)}`;
+}
+
+function buildFlowsPrompt(scan, contextPack, candidates = [], modules = []) {
+  return `你正在执行多阶段项目接管分析的链路阶段。
+只基于入口候选、代码图谱邻居和本阶段上下文输出核心链路。
+
+输出 JSON 结构：
+{
+  "flows": [{
+    "id":"", "kind":"api|page|cli|worker|consumer|job|unknown", "name":"", "trigger":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown",
+    "steps": [{"order":1, "path":"", "symbol":"", "startLine":1, "endLine":1, "description":"", "confidence":"fact|guess|unknown"}],
+    "dataReads": [], "dataWrites": [], "externalCalls": [], "breakpoints": [], "unknowns": [], "notes": [],
+    "mermaid":"", "sequenceDiagram":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]
+  }]
+}
+
+约束：本批最多输出 3 条 P0/P1 链路；steps 必须按实际代码顺序排列；证据必须引用文件路径。
+入口候选：
+${JSON.stringify(candidates, null, 2)}
+已识别模块：
+${JSON.stringify(modules.slice(0, 8), null, 2)}
+关键文件：
+${formatKeyFiles(scan, 40)}
+上下文文件：
+${formatContextFiles(contextPack)}
+代码摘录：
+${formatCodeChunks(contextPack?.chunks || [], 12000)}`;
+}
+
+function buildRisksPrompt(scan, contextPack, overview = {}, modules = [], flows = []) {
+  return `你正在执行多阶段项目接管分析的风险阶段。
+只基于总览、模块、链路和风险相关上下文输出优先验证风险和数据模型线索。
+
+输出 JSON 结构：
+{
+  "risks": [{"id":"", "title":"", "level":"high|medium|low", "category":"permission|state|idempotency|transaction|concurrency|cache|external|test|data|ai-change", "moduleId":"", "flowId":"", "path":"", "startLine":1, "endLine":1, "reason":"", "impact":"", "verify":"", "verifySteps":[], "suggestedTests":[], "confidence":"fact|guess|unknown", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+  "dataModel": {"entities":[], "relations":[], "stateMachines":[], "keyFields":[], "risks":[]},
+  "unknowns": [],
+  "readingPlan": [{"timebox":"", "goal":"", "files":[], "output":""}],
+  "evidenceIndex": {"files":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}
+}
+
+约束：risks 最多 8 条；只输出需要人工优先验证的问题；不要编造没有文件证据的高风险。
+总览：
+${JSON.stringify(overview, null, 2)}
+模块：
+${JSON.stringify(modules.slice(0, 8), null, 2)}
+链路：
+${JSON.stringify(flows.slice(0, 6), null, 2)}
+风险相关上下文文件：
+${formatContextFiles(contextPack)}
+代码摘录：
+${formatCodeChunks(contextPack?.chunks || [], 12000)}`;
+}
+
+function formatKeyFiles(scan, limit = 60) {
+  return (scan.keyFiles || []).slice(0, limit).map((file) => {
+    const symbols = (file.symbols || []).slice(0, 6).map((symbol) => `${symbol.kind}:${symbol.name}@L${symbol.startLine}`).join(', ');
+    return `${file.priority} | ${file.role} | ${file.path} | ${file.language}${symbols ? ` | symbols: ${symbols}` : ''}`;
+  }).join('\n');
+}
+
+function formatContextFiles(contextPack) {
+  return (contextPack?.files || []).map((file) => `${file.priority} | score=${file.score} | ${file.path} | ${file.language} | ${file.charCount} chars`).join('\n');
+}
+
+function formatCodeChunks(chunks, perFileLimit) {
+  return chunks.map((chunk) => {
+    const symbols = (chunk.symbols || []).slice(0, 16).map((symbol) => `${symbol.kind} ${symbol.name} L${symbol.startLine}-${symbol.endLine}: ${symbol.signature || ''}`).join('\n');
+    return `--- FILE: ${chunk.path}\nROLE: ${chunk.role}\nLANG: ${chunk.language}\nSYMBOLS:\n${symbols || '-'}\n${String(chunk.content || '').slice(0, perFileLimit)}`;
+  }).join('\n\n');
+}
+
 const ConfidenceSchema = z.enum(['fact', 'guess', 'unknown']);
 const CodeReferenceSchema = z.object({
   path: z.string().min(1),
@@ -319,6 +499,25 @@ const AskAnswerSchema = z.object({
   markdown: z.string()
 });
 
+const StageObject = z.object({}).passthrough();
+const OverviewStageSchema = z.object({
+  projectOverview: StageObject.optional(),
+  architecture: StageObject.optional(),
+  entrypoints: z.array(StageObject).optional(),
+  readingPlan: z.array(StageObject).optional(),
+  unknowns: z.array(z.any()).optional(),
+  mermaid: z.string().optional()
+}).passthrough();
+const ModulesStageSchema = z.object({ modules: z.array(StageObject).optional() }).passthrough();
+const FlowsStageSchema = z.object({ flows: z.array(StageObject).optional() }).passthrough();
+const RisksStageSchema = z.object({
+  risks: z.array(StageObject).optional(),
+  dataModel: StageObject.optional(),
+  unknowns: z.array(z.any()).optional(),
+  readingPlan: z.array(StageObject).optional(),
+  evidenceIndex: StageObject.optional()
+}).passthrough();
+
 export function parseAnalysisReport(text) {
   return validateAnalysisReport(parseJsonResult(text));
 }
@@ -341,6 +540,47 @@ export function validateAnalysisReport(value) {
   analysisQuality.confidence = analysisQuality.confidence || 'unknown';
   report.analysisQuality = analysisQuality;
   return report;
+}
+
+export function validateOverviewStage(value) {
+  const checked = OverviewStageSchema.safeParse(value);
+  const stage = checked.success && checked.data && typeof checked.data === 'object' ? checked.data : {};
+  return {
+    projectOverview: objectOrEmpty(stage.projectOverview),
+    architecture: objectOrEmpty(stage.architecture),
+    entrypoints: Array.isArray(stage.entrypoints) ? stage.entrypoints : [],
+    readingPlan: Array.isArray(stage.readingPlan) ? stage.readingPlan : [],
+    unknowns: Array.isArray(stage.unknowns) ? stage.unknowns : [],
+    mermaid: typeof stage.mermaid === 'string' ? stage.mermaid : ''
+  };
+}
+
+export function validateModulesStage(value) {
+  const checked = ModulesStageSchema.safeParse(value);
+  const stage = checked.success && checked.data && typeof checked.data === 'object' ? checked.data : {};
+  return { modules: Array.isArray(stage.modules) ? stage.modules : [] };
+}
+
+export function validateFlowsStage(value) {
+  const checked = FlowsStageSchema.safeParse(value);
+  const stage = checked.success && checked.data && typeof checked.data === 'object' ? checked.data : {};
+  return { flows: Array.isArray(stage.flows) ? stage.flows : [] };
+}
+
+export function validateRisksStage(value) {
+  const checked = RisksStageSchema.safeParse(value);
+  const stage = checked.success && checked.data && typeof checked.data === 'object' ? checked.data : {};
+  return {
+    risks: Array.isArray(stage.risks) ? stage.risks : [],
+    dataModel: objectOrEmpty(stage.dataModel),
+    unknowns: Array.isArray(stage.unknowns) ? stage.unknowns : [],
+    readingPlan: Array.isArray(stage.readingPlan) ? stage.readingPlan : [],
+    evidenceIndex: objectOrEmpty(stage.evidenceIndex)
+  };
+}
+
+function objectOrEmpty(value) {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
 }
 
 export function validateAskAnswer(value) {

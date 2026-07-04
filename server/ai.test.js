@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildJsonRepairPrompt, parseAnalysisReport, parseAskAnswer, parseJsonResult, resolveAiTimeoutMs } from './ai.js';
+import { buildJsonRepairPrompt, parseAnalysisReport, parseAskAnswer, parseJsonResult, resolveAiTimeoutMs, validateFlowsStage, validateModulesStage, validateOverviewStage, validateRisksStage } from './ai.js';
 
 test('resolveAiTimeoutMs validates configured request timeout', () => {
   assert.equal(resolveAiTimeoutMs(), 60_000);
@@ -42,6 +42,13 @@ test('parseAskAnswer validates structured answer schema', () => {
   }));
 
   assert.equal(answer.confidence, 'unknown');
+});
+
+test('stage validators default missing arrays without requiring full report schema', () => {
+  assert.deepEqual(validateOverviewStage({ projectOverview: { name: 'demo' } }).entrypoints, []);
+  assert.deepEqual(validateModulesStage({}).modules, []);
+  assert.deepEqual(validateFlowsStage({}).flows, []);
+  assert.deepEqual(validateRisksStage({}).risks, []);
 });
 
 test('buildJsonRepairPrompt preserves invalid response for one repair attempt', () => {
