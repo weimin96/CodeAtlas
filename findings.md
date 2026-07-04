@@ -32,3 +32,4 @@
 - 用户将仓库改为 `weimin96/codemap-ai`，本次手动发布目标版本为 `0.1.0`。
 - 新 token 的 `npm whoami` 返回 `codemapai`，但手动 `npm publish --access public --provenance=false` 返回 E403：仍需要 2FA OTP 或启用 bypass 2FA 的发布 token。
 - 用户确认 npm 发布配置已调整，本次发布目标版本改为 `0.2.0`，同时整理 README 并补充徽标。
+- GitHub Actions Release 运行 `28705185078` 成功发布 `@codemapai/codemap-ai@0.2.0`，npm latest 指向 `0.2.0`。

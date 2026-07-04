@@ -47,7 +47,7 @@
 | 37 | blocked | 发布到 npm 并确认结果 | GitHub Actions publish、npm view |
 | 38 | complete | 迁移 GitHub Actions 到 npm Trusted Publishing | workflow 审查、Actions 发布 |
 | 39 | blocked | 按新仓库地址手动发布 `0.1.0` | dry-run、npm publish、npm view |
-| 40 | in_progress | 整理 README 并通过 GitHub Actions 发布 `0.2.0` | dry-run、Actions publish、npm view |
+| 40 | complete | 整理 README 并通过 GitHub Actions 发布 `0.2.0` | dry-run、Actions publish、npm view |
 
 ### 验证方式
 - 自动化：执行项目已有最小验证命令，如 `npm run typecheck`、`npm run pack:local` 或 `npm pack --dry-run`。

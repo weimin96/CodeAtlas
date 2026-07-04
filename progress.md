@@ -35,3 +35,5 @@
 - 阶段 39 阻塞：手动 `npm publish --access public --provenance=false` 已通过 prepublishOnly 的 typecheck、test、build，但最终 npm 返回 E403，要求 2FA OTP 或 bypass 2FA token，包未发布。
 - 用户确认发布配置已调整，要求改为 `0.2.0`、整理 README 说明、补充徽标并重新发布。
 - 阶段 40 进行中：package 版本改为 `0.2.0`，README 新增 npm/CI/license/Node 徽标，安装说明优先使用 npm 包，发布说明更新为 GitHub Actions Trusted Publishing，无需 npm token。
+- 阶段 40 完成：`npm run release:dry-run` 通过；已提交并推送 `main`，创建并推送 `v0.2.0`；GitHub Actions Release 运行 `28705185078` 成功。
+- 发布验证通过：`npm view @codemapai/codemap-ai version dist-tags.latest repository.url` 返回 `0.2.0`、latest `0.2.0`、repository `git+https://github.com/weimin96/codemap-ai.git`。
