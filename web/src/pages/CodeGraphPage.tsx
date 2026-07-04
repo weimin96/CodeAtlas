@@ -5,9 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState, SectionTitle, StatCard } from '@/components/PageBlocks';
+import { ObjectInspector, type ObjectInspectorTab } from '@/components/ObjectInspector';
 import type { AiConfig, CodeGraph, CodeGraphEdge, CodeGraphNode, CoreFlow, FilePayload, Report, RiskItem, SymbolInfo } from '@/types';
 
-type InspectorTab = 'overview' | 'explain' | 'why' | 'warnings' | 'code';
+type InspectorTab = ObjectInspectorTab;
 type GraphScope = 'all' | 'module' | 'flow' | 'file' | 'symbol';
 type SearchKind = 'all' | 'file' | 'function' | 'module' | 'warning';
 type NeighborMode = 'direct' | 'callers' | 'callees' | 'imports' | 'two-hop';
@@ -173,22 +174,20 @@ export function CodeGraphPage({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="space-y-3">
-          <CardTitle className="text-base">当前对象 Inspector</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            {(['overview', 'explain', 'why', 'warnings', 'code'] as InspectorTab[]).map((item) => <Button key={item} type="button" size="sm" variant={tab === item ? 'default' : 'outline'} onClick={() => setTab(item)}>{tabLabel(item)}</Button>)}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!selectedNode && <EmptyState text="选择左侧节点查看详情" />}
-          {selectedNode && tab === 'overview' && <OverviewInspector node={selectedNode} edges={relatedEdges} nodes={nodes} businessLinks={businessLinks} onOpenFile={onOpenFile} />}
-          {selectedNode && tab === 'explain' && <ExplainInspector loading={explainLoading} explanation={explanation} error={explainError} fallback={() => buildNodeExplanation({ node: selectedNode, edges: relatedEdges, nodes, warnings: selectedWarnings, businessLinks })} />}
-          {selectedNode && tab === 'why' && <WhyInspector nodes={nodes} selectedNode={selectedNode} targetNode={targetNode} targetId={targetId} connection={connection} onTargetChange={setTargetId} />}
-          {selectedNode && tab === 'warnings' && <WarningsInspector warnings={selectedWarnings} />}
-          {selectedNode && tab === 'code' && <CodeInspector node={selectedNode} onOpenFile={onOpenFile} />}
-        </CardContent>
-      </Card>
+      {selectedNode ? <ObjectInspector
+        objectType="node"
+        title={selectedNode.name}
+        subtitle={selectedNode.path || selectedNode.id}
+        activeTab={tab}
+        onTabChange={setTab}
+        tabs={[
+          { id: 'overview', content: <OverviewInspector node={selectedNode} edges={relatedEdges} nodes={nodes} businessLinks={businessLinks} onOpenFile={onOpenFile} /> },
+          { id: 'explain', content: <ExplainInspector loading={explainLoading} explanation={explanation} error={explainError} fallback={() => buildNodeExplanation({ node: selectedNode, edges: relatedEdges, nodes, warnings: selectedWarnings, businessLinks })} /> },
+          { id: 'why-connected', content: <WhyInspector nodes={nodes} selectedNode={selectedNode} targetNode={targetNode} targetId={targetId} connection={connection} onTargetChange={setTargetId} /> },
+          { id: 'warnings', content: <WarningsInspector warnings={selectedWarnings} /> },
+          { id: 'code', content: <CodeInspector node={selectedNode} onOpenFile={onOpenFile} /> }
+        ]}
+      /> : <Card><CardContent className="p-5"><EmptyState text="选择左侧节点查看详情" /></CardContent></Card>}
     </div>
   </div>;
 }
@@ -627,6 +626,3 @@ function scopeLabel(scope: GraphScope) {
   return ({ all: '全项目', module: '当前模块', flow: '当前链路', file: '当前文件', symbol: '当前函数' })[scope];
 }
 
-function tabLabel(tab: InspectorTab) {
-  return ({ overview: '概览', explain: '解释', why: '为什么有关', warnings: '告警', code: '代码' })[tab];
-}
