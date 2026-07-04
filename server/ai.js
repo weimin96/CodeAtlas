@@ -58,7 +58,8 @@ export async function analyzeWithAI({ scan, chunks, contextPack, config }) {
     prompt,
     temperature: 0.15
   });
-  return await parseJsonResultWithRepair({ text: result.text, model: result.model, expectedSchema: 'project analysis report JSON' });
+  const parsed = await parseJsonResultWithRepair({ text: result.text, model: result.model, expectedSchema: 'project analysis report JSON' });
+  return validateAnalysisReport(parsed);
 }
 
 export async function askWithAI({ question, context, config }) {
@@ -252,6 +253,22 @@ const CodeReferenceSchema = z.object({
   confidence: ConfidenceSchema
 });
 
+const ReportSchema = z.object({
+  generatedBy: z.string().optional(),
+  projectOverview: z.object({}).passthrough(),
+  analysisQuality: z.object({}).passthrough().optional(),
+  architecture: z.object({}).passthrough().optional(),
+  entrypoints: z.array(z.object({}).passthrough()).optional(),
+  modules: z.array(z.object({}).passthrough()),
+  flows: z.array(z.object({}).passthrough()),
+  dataModel: z.object({}).passthrough().optional(),
+  risks: z.array(z.object({}).passthrough()),
+  readingPlan: z.array(z.object({}).passthrough()).optional(),
+  unknowns: z.array(z.any()).optional(),
+  evidenceIndex: z.object({}).passthrough().optional(),
+  mermaid: z.string().optional()
+}).passthrough();
+
 const AskAnswerSchema = z.object({
   conclusion: z.string().min(1),
   evidence: z.array(CodeReferenceSchema),
@@ -262,8 +279,28 @@ const AskAnswerSchema = z.object({
   markdown: z.string()
 });
 
+export function parseAnalysisReport(text) {
+  return validateAnalysisReport(parseJsonResult(text));
+}
+
 export function parseAskAnswer(text) {
   return validateAskAnswer(parseJsonResult(text));
+}
+
+export function validateAnalysisReport(value) {
+  const checked = ReportSchema.safeParse(value);
+  if (checked.success) return checked.data;
+  const report = value && typeof value === 'object' && !Array.isArray(value) ? { ...value } : {};
+  report.projectOverview = report.projectOverview && typeof report.projectOverview === 'object' && !Array.isArray(report.projectOverview) ? report.projectOverview : {};
+  report.modules = Array.isArray(report.modules) ? report.modules : [];
+  report.flows = Array.isArray(report.flows) ? report.flows : [];
+  report.risks = Array.isArray(report.risks) ? report.risks : [];
+  const warnings = checked.error.issues.map((issue) => `schema: ${issue.path.join('.') || '<root>'} ${issue.message}`);
+  const analysisQuality = report.analysisQuality && typeof report.analysisQuality === 'object' && !Array.isArray(report.analysisQuality) ? { ...report.analysisQuality } : {};
+  analysisQuality.parseWarnings = [...(Array.isArray(analysisQuality.parseWarnings) ? analysisQuality.parseWarnings : []), ...warnings];
+  analysisQuality.confidence = analysisQuality.confidence || 'unknown';
+  report.analysisQuality = analysisQuality;
+  return report;
 }
 
 export function validateAskAnswer(value) {

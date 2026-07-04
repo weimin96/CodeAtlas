@@ -1,10 +1,25 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildJsonRepairPrompt, parseAskAnswer, parseJsonResult } from './ai.js';
+import { buildJsonRepairPrompt, parseAnalysisReport, parseAskAnswer, parseJsonResult } from './ai.js';
 
 test('parseJsonResult accepts fenced json only after stripping fences', () => {
   const parsed = parseJsonResult('```json\n{"ok":true}\n```');
   assert.deepEqual(parsed, { ok: true });
+});
+
+test('parseAnalysisReport downgrades schema-invalid reports with warnings', () => {
+  const report = parseAnalysisReport(JSON.stringify({
+    generatedBy: 'ai',
+    projectOverview: { name: 'codemap-ai' },
+    analysisQuality: { parseWarnings: ['existing warning'] }
+  }));
+
+  assert.deepEqual(report.modules, []);
+  assert.deepEqual(report.flows, []);
+  assert.deepEqual(report.risks, []);
+  assert.equal(report.analysisQuality.confidence, 'unknown');
+  assert.ok(report.analysisQuality.parseWarnings.some((warning) => warning.includes('schema: modules')));
+  assert.ok(report.analysisQuality.parseWarnings.includes('existing warning'));
 });
 
 test('parseAskAnswer validates structured answer schema', () => {
