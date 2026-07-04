@@ -4,6 +4,7 @@
   "description": "CodeAtlas local AI project onboarding workbench with code preview, code graph, flow maps, risk radar, and context-bound Q&A.",
   "type": "module",
   "bin": {
+    "codeatlas": "bin/pfo.js",
     "pfo": "bin/pfo.js",
     "project-fast-onboarding": "bin/pfo.js"
   },

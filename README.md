@@ -10,7 +10,7 @@
 
 本地项目快速接管工作台。通过 npm 安装后，用命令指定一个本地项目目录，在浏览器里查看项目总览、模块地图、模块详情、核心链路、链路详情、数据模型、风险雷达、代码图谱、代码证据，并基于当前文件、选中代码、符号、链路或风险追问 AI。
 
-> npm 包名和 CLI 当前仍沿用 `project-fast-onboarding` / `pfo`；产品展示名已先统一为 CodeAtlas。
+> npm 包名当前仍沿用 `project-fast-onboarding`；CLI 已新增 `codeatlas`，并保留 `pfo` / `project-fast-onboarding` 兼容入口。
 
 ## 当前版本
 
@@ -57,19 +57,19 @@ npm install -g project-fast-onboarding
 ## 使用
 
 ```bash
-pfo /path/to/your/project
+codeatlas /path/to/your/project
 ```
 
 指定端口：
 
 ```bash
-pfo /path/to/your/project --port 8088
+codeatlas /path/to/your/project --port 8088
 ```
 
 不自动打开浏览器：
 
 ```bash
-pfo /path/to/your/project --no-open
+codeatlas /path/to/your/project --no-open
 ```
 
 默认地址：
@@ -115,7 +115,7 @@ API Key: sk-...
 也支持环境变量：
 
 ```bash
-OPENAI_API_KEY=xxx OPENAI_MODEL=gpt-4.1-mini pfo /path/to/project
+OPENAI_API_KEY=xxx OPENAI_MODEL=gpt-4.1-mini codeatlas /path/to/project
 ```
 
 ### Ollama
@@ -221,7 +221,7 @@ API Key 优先可通过环境变量提供。通过页面保存时，配置写入
 
 ## 当前限制
 
-- 产品展示名、README 标题和系统顶部品牌已统一为 CodeAtlas；npm 包名和 CLI 仍保留 `project-fast-onboarding` / `pfo`，尚未迁移。
+- 产品展示名、README 标题、系统顶部品牌和主 CLI 已统一为 CodeAtlas；npm 包名仍保留 `project-fast-onboarding`，尚未迁移。
 - 符号索引当前使用正则实现，不是 Tree-sitter AST 级索引。
 - Code Graph 目前只支持 JS/TS 图谱层；Python / Go / Java 仍只有符号索引。
 - `calls` 是基于名称匹配的近似静态调用关系，无法覆盖动态调用、别名、重导出和复杂类型推断。
