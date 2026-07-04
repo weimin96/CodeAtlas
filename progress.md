@@ -25,3 +25,5 @@
 - 阶段 8 验证通过：node --check server/ai.js server/server.js；npm run typecheck。
 - 阶段 9 完成：移除 Ask 非法 JSON 转 markdown 的兜底；移除 AI JSON 正则截取兜底；Context Pack 读取失败、非法 mode、非法 maxChars 均明确报错。
 - 阶段 9 验证通过：node --check server/ai.js server/context-pack.js server/server.js server/report-normalizer.js；npm run typecheck。
+- 阶段 10 完成：移除追问上下文增强中的静默读取失败；当前文件或链路步骤文件读取失败会中止追问并返回明确错误。
+- 阶段 10 验证通过：node --check server/context-enrichment.js server/server.js；npm run typecheck。
