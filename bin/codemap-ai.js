@@ -66,6 +66,9 @@ async function runPack(argv) {
     .argument('[projectDir]', 'project folder to inspect', '.')
     .option('--format <format>', 'output format: markdown or json', 'markdown')
     .option('--max-chars <chars>', 'maximum context characters', '120000')
+    .option('--max-files <count>', 'maximum files to scan before building the pack')
+    .option('--max-depth <depth>', 'maximum directory depth for filesystem fallback scanning')
+    .option('--max-bytes-total <bytes>', 'maximum total bytes to scan')
     .option('--include <patterns...>', 'include only matching paths for the pack output')
     .option('--ignore <patterns...>', 'exclude matching paths from the pack output')
     .option('--stdin', 'read additional include paths or patterns from stdin')
@@ -77,14 +80,18 @@ async function runPack(argv) {
   const opts = packProgram.opts();
   const format = String(opts.format || 'markdown').toLowerCase();
   if (!['markdown', 'json'].includes(format)) throw new Error('Invalid pack --format value.');
-  const maxChars = Number(opts.maxChars);
-  if (!Number.isFinite(maxChars) || maxChars <= 0) throw new Error('Invalid pack --max-chars value.');
+  const maxChars = parsePositiveNumber(opts.maxChars, 'pack --max-chars');
+  const scanOptions = {
+    maxFiles: opts.maxFiles === undefined ? undefined : parsePositiveNumber(opts.maxFiles, 'pack --max-files'),
+    maxDepth: opts.maxDepth === undefined ? undefined : parsePositiveNumber(opts.maxDepth, 'pack --max-depth'),
+    maxBytesTotal: opts.maxBytesTotal === undefined ? undefined : parsePositiveNumber(opts.maxBytesTotal, 'pack --max-bytes-total')
+  };
 
   const projectDir = path.resolve(packProgram.args[0] || '.');
   const outputPath = opts.output ? path.resolve(opts.output) : '';
   const outputIgnore = outputPath ? relativePathIfInside(projectDir, outputPath) : '';
   const stdinInclude = opts.stdin ? await readStdinPatterns() : [];
-  const scan = filterScanForPack(await scanProject(projectDir), {
+  const scan = filterScanForPack(await scanProject(projectDir, scanOptions), {
     include: [...(opts.include || []), ...stdinInclude],
     ignore: [...(opts.ignore || []), outputIgnore].filter(Boolean)
   });
@@ -105,6 +112,12 @@ async function runPack(argv) {
   }
   process.stdout.write(output);
   if (!output.endsWith('\n')) process.stdout.write('\n');
+}
+
+function parsePositiveNumber(value, label) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) throw new Error(`Invalid ${label} value.`);
+  return parsed;
 }
 
 async function readStdinPatterns() {
