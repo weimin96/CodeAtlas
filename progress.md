@@ -13,3 +13,5 @@
 - 阶段 3 完成：新增 ModuleDetailPage；模块地图卡片和按钮进入模块详情；详情页代码证据可跳转代码浏览器。
 - 阶段 3 首次 typecheck 失败：证据数组类型推断过窄，已显式声明 CodeReference[]。
 - 阶段 3 验证通过：npm run typecheck。
+- 阶段 4 完成：server/ai.js 的分析 prompt 改为四阶段组织，并扩展 JSON 输出结构。
+- 阶段 4 验证通过：npm run typecheck；node --check server/ai.js。

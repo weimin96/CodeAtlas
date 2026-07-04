@@ -78,23 +78,33 @@ const SYSTEM_PROMPT = `你是“项目快速接管工作台”的代码理解引
 要求：
 - 只基于提供的目录和代码片段分析，不要编造。
 - 每个关键结论标注 confidence: fact | guess | unknown。
-- 优先速度和主干：入口、模块、核心链路、数据副作用、风险、阅读路线。
-- 输出必须是严格 JSON，不要 Markdown，不要代码围栏。
+- 结论必须绑定代码证据；证据不足时使用 unknown，不要补故事。
+- 按四个阶段提取信息：项目总览、模块分析、链路分析、风险与待验证问题。
+- 阶段分析只用于组织判断，最终只输出严格 JSON，不要输出 Markdown、解释、推理过程或代码围栏。
 - flows.steps 必须尽量绑定 path、symbol、startLine、endLine；不知道行号可省略。
 - flows 每条链路必须包含数据读取、数据写入、外部调用、推荐断点和不确定点。
-- flows.mermaid 输出该链路可渲染的 flowchart TD；flows.sequenceDiagram 可输出 sequenceDiagram。
 - 顶层 mermaid 输出 2-5 条核心链路的总览 flowchart TD。
+
+四阶段输出目标：
+1. 项目总览：判断项目类型、技术栈、启动方式、入口候选和分析质量。
+2. 模块分析：按业务模块而不是技术层分组，输出模块职责、能力、入口、依赖、实体和证据。
+3. 链路分析：从入口到服务、数据读写、外部调用、状态变化和断点，形成可验证剧本。
+4. 风险与待验证问题：风险必须关联模块、链路、影响、验证步骤和代码证据。
 
 JSON 结构：
 {
   "generatedBy": "ai",
   "projectOverview": {"name":"", "type":"", "techStack":[], "startup":"", "confidence":"fact|guess|unknown", "summary":""},
-  "entrypoints": [{"name":"", "path":"", "kind":"", "confidence":"fact|guess|unknown", "evidence":""}],
-  "modules": [{"name":"", "paths":[], "responsibility":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "evidence":""}],
-  "flows": [{"id":"", "kind":"api|page|cli|worker|consumer|job|unknown", "name":"", "trigger":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "steps":[{"order":1,"path":"","symbol":"","startLine":1,"endLine":1,"description":"","confidence":"fact|guess|unknown"}], "dataReads":[], "dataWrites":[], "externalCalls":[], "breakpoints":[], "unknowns":[], "notes":[], "mermaid":"flowchart TD\n  A[触发] --> B[入口]", "sequenceDiagram":"sequenceDiagram\n  participant A as 触发"}],
-  "risks": [{"title":"", "level":"high|medium|low", "path":"", "startLine":1, "endLine":1, "reason":"", "verify":""}],
+  "analysisQuality": {"scannedFiles":0, "indexedSymbols":0, "contextFiles":[], "skippedFiles":[], "parseWarnings":[], "confidence":"fact|guess|unknown", "tokenBudget":{"max":0,"used":0}},
+  "architecture": {"summary":"", "mermaid":"flowchart TD\n  A[入口] --> B[模块]", "evidence":[{"path":"", "symbol":"", "startLine":1, "endLine":1, "reason":"", "confidence":"fact|guess|unknown"}]},
+  "entrypoints": [{"name":"", "path":"", "kind":"", "confidence":"fact|guess|unknown", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+  "modules": [{"id":"", "name":"", "paths":[], "summary":"", "responsibility":"", "responsibilities":[], "businessCapabilities":[{"name":"", "description":"", "importance":"core|important|supporting", "evidence":[{"path":"", "symbol":"", "startLine":1, "endLine":1, "reason":"", "confidence":"fact|guess|unknown"}]}], "entrypoints":[{"name":"", "path":"", "method":"", "route":"", "kind":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}], "dependencies":[{"moduleId":"", "reason":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}], "dataEntities":[], "coreFlows":[], "keyFiles":[{"path":"", "symbol":"", "startLine":1, "endLine":1, "reason":"", "confidence":"fact|guess|unknown"}], "risks":[], "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
+  "flows": [{"id":"", "kind":"api|page|cli|worker|consumer|job|unknown", "name":"", "trigger":"", "priority":"P0|P1|P2|P3", "confidence":"fact|guess|unknown", "steps":[{"order":1,"path":"","symbol":"","startLine":1,"endLine":1,"description":"","confidence":"fact|guess|unknown"}], "dataReads":[], "dataWrites":[], "externalCalls":[], "breakpoints":[], "unknowns":[], "notes":[], "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}], "mermaid":"flowchart TD\n  A[触发] --> B[入口]", "sequenceDiagram":"sequenceDiagram\n  participant A as 触发"}],
+  "dataModel": {"entities":[{"id":"", "name":"", "description":"", "moduleId":"", "keyFields":[], "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}], "relations":[{"from":"", "to":"", "type":"", "reason":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}], "stateMachines":[{"entity":"", "field":"", "states":[], "transitions":[{"from":"", "to":"", "trigger":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}]}], "keyFields":[{"entity":"", "field":"", "reason":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}], "risks":[{"title":"", "reason":"", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}]},
+  "risks": [{"id":"", "title":"", "level":"high|medium|low", "category":"permission|state|idempotency|transaction|concurrency|cache|external|test|data|ai-change", "moduleId":"", "flowId":"", "path":"", "startLine":1, "endLine":1, "reason":"", "impact":"", "verify":"", "verifySteps":[], "suggestedTests":[], "confidence":"fact|guess|unknown", "evidence":[{"path":"", "reason":"", "confidence":"fact|guess|unknown"}]}],
   "readingPlan": [{"timebox":"", "goal":"", "files":[], "output":""}],
   "unknowns": [],
+  "evidenceIndex": {"files":[{"path":"", "symbol":"", "startLine":1, "endLine":1, "reason":"", "confidence":"fact|guess|unknown"}]},
   "mermaid": "flowchart TD\n  A[触发] --> B[入口]"
 }`;
 
@@ -113,6 +123,7 @@ function buildAnalyzePrompt(scan, chunks, contextPack) {
     const symbolSummary = (f.symbols || []).slice(0, 8).map((s) => `${s.kind}:${s.name}@L${s.startLine}`).join(', ');
     return `${f.priority} | ${f.role} | ${f.path} | ${f.language}${symbolSummary ? ` | symbols: ${symbolSummary}` : ''}`;
   }).join('\n');
+  const contextFiles = (contextPack?.files || []).map((f) => `${f.priority} | score=${f.score} | ${f.path} | ${f.language} | ${f.charCount} chars`).join('\n');
   const code = chunks.map((c) => {
     const symbols = (c.symbols || []).slice(0, 24).map((s) => `${s.kind} ${s.name} L${s.startLine}-L${s.endLine}: ${s.signature}`).join('\n');
     return `--- FILE: ${c.path}\nROLE: ${c.role}\nLANG: ${c.language}\nSYMBOLS:\n${symbols || '-'}\n${c.content.slice(0, 24000)}`;
@@ -120,6 +131,13 @@ function buildAnalyzePrompt(scan, chunks, contextPack) {
   return `项目根目录：${scan.root}
 扫描概况：files=${scan.totalFiles}, dirs=${scan.totalDirs}, symbols=${scan.totalSymbols || 0}
 上下文预算：${contextPack?.budget?.usedChars || 0}/${contextPack?.budget?.maxChars || 0} chars
+估算 token：${Math.ceil((contextPack?.budget?.usedChars || 0) / 3)}/${Math.ceil((contextPack?.budget?.maxChars || 0) / 3)}
+
+请按以下四阶段提取事实，但最终只输出一个完整 JSON。
+
+阶段 1：项目总览分析
+输入重点：目录树、README、配置、入口候选、Repo Map 摘要。
+输出重点：projectOverview、entrypoints、analysisQuality、architecture。
 
 候选关键文件：
 ${fileList}
@@ -130,8 +148,23 @@ ${JSON.stringify(scan.repoMap || {}, null, 2)}
 目录树摘要：
 ${JSON.stringify(scan.tree.slice(0, 220), null, 2)}
 
+阶段 2：模块分析
+输入重点：repoMap.modules、关键文件路径、入口文件、service/model/repository 等命名线索。
+输出重点：modules，且模块必须偏业务领域，不要只按 components/services/models 这类技术层拆分。
+
+结构模块候选：
+${JSON.stringify(scan.repoMap?.modules || [], null, 2)}
+
+阶段 3：链路分析
+输入重点：入口文件、模块、相关 service/model/repository、符号摘要。
+输出重点：flows、flows.steps、dataReads、dataWrites、externalCalls、breakpoints、sequenceDiagram。
+
+阶段 4：风险与待验证问题
+输入重点：模块、链路、数据实体、配置、外部调用、可变状态、测试缺口。
+输出重点：risks、dataModel、unknowns、readingPlan、evidenceIndex。
+
 本次分析使用的上下文文件：
-${(contextPack?.files || []).map((f) => `${f.priority} | score=${f.score} | ${f.path} | ${f.language} | ${f.charCount} chars`).join('\n')}
+${contextFiles}
 
 关键文件内容：
 ${code}

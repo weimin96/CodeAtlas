@@ -20,7 +20,7 @@
 | 1 | complete | 报告 schema 增加 analysisQuality、dataModel、evidence，并增强 normalizer | npm run typecheck；node --check server |
 | 2 | complete | AppShell 顶部导航化，首页增加 Hero 与分析质量 | npm run typecheck |
 | 3 | complete | 新增 ModuleDetailPage，模块卡片进入详情而非代码页 | npm run typecheck |
-| 4 | pending | AI 分析 prompt 拆成四阶段结构要求，并保留兼容的 /api/analyze 输出 | npm run typecheck |
+| 4 | complete | AI 分析 prompt 拆成四阶段结构要求，并保留兼容的 /api/analyze 输出 | npm run typecheck；node --check server/ai.js |
 
 ## 风险点
 - 历史报告可能缺少新增字段，normalizer 必须补齐默认结构。
