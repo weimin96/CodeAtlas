@@ -1,6 +1,9 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildGraphContext, selectContextFiles } from './context-pack.js';
+import { buildContextPack, buildGraphContext, detectSecretRisk, selectContextFiles } from './context-pack.js';
 
 const scan = {
   files: [
@@ -22,6 +25,16 @@ const graph = {
   warnings: [{ path: 'src/order/service.ts', kind: 'unresolved_call', message: 'reserve' }]
 };
 
+async function createProject(files) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'codemap-ai-context-'));
+  for (const [relPath, content] of Object.entries(files)) {
+    const absolute = path.join(root, relPath);
+    await fs.mkdir(path.dirname(absolute), { recursive: true });
+    await fs.writeFile(absolute, content, 'utf8');
+  }
+  return root;
+}
+
 test('buildGraphContext boosts direct graph neighbors for question mode', () => {
   const context = buildGraphContext(graph, { currentSymbol: { id: 'src/order/controller.ts#createOrder', name: 'createOrder' } }, 'question');
 
@@ -34,4 +47,34 @@ test('selectContextFiles uses graph context scores', () => {
   const selected = selectContextFiles(scan, { mode: 'question', target: { currentSymbol: { name: 'createOrder' } }, maxChars: 2000, graphContext });
 
   assert.equal(selected[0].path, 'src/order/service.ts');
+});
+
+test('detectSecretRisk flags sensitive paths and credential-like content', () => {
+  assert.equal(detectSecretRisk({ path: '.env', content: '' }).kind, 'sensitive_path');
+  assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'serviceToken = ' + 'x'.repeat(32) }).kind, 'credential_assignment');
+  assert.equal(detectSecretRisk({ path: 'src/config.ts', content: 'export const name = "demo";' }), null);
+});
+
+test('buildContextPack excludes sensitive files from AI chunks', async () => {
+  const root = await createProject({
+    'src/app.ts': 'export function start() { return true; }\n',
+    '.env': 'SERVICE_TOKEN=' + 'x'.repeat(32) + '\n',
+    'src/config.ts': 'serviceToken = ' + 'x'.repeat(32) + '\n'
+  });
+  const projectScan = {
+    root,
+    totalFiles: 3,
+    totalSymbols: 0,
+    repoMap: {},
+    files: [
+      { path: 'src/app.ts', text: true, size: 40, role: 'entry', priority: 'P0', language: 'typescript', symbols: [] },
+      { path: '.env', text: true, size: 50, role: 'config', priority: 'P0', language: 'text', symbols: [] },
+      { path: 'src/config.ts', text: true, size: 60, role: 'config', priority: 'P0', language: 'typescript', symbols: [] }
+    ]
+  };
+
+  const pack = await buildContextPack({ root, scan: projectScan, maxChars: 20000 });
+
+  assert.deepEqual(pack.chunks.map((chunk) => chunk.path), ['src/app.ts']);
+  assert.deepEqual(pack.skippedFiles.map((file) => file.path).sort(), ['.env', 'src/config.ts']);
 });

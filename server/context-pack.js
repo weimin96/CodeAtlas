@@ -4,19 +4,36 @@ import { scoreRepoFile } from './repo-map.js';
 const DEFAULT_MAX_CHARS = 120_000;
 const MAX_CHARS_PER_FILE = 28_000;
 const CONTEXT_MODES = new Set(['overview', 'module', 'flow', 'risk', 'question']);
+const SENSITIVE_PATH_PATTERN = /(^|\/)\.env($|[./])|(^|\/)(id_rsa|id_dsa|id_ecdsa|id_ed25519)$|\.(pem|p12|pfx|key)$/i;
+const SECRET_PATTERNS = [
+  { kind: 'private_key', pattern: /-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----/ },
+  { kind: 'jwt', pattern: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
+  { kind: 'credential_assignment', pattern: /(?:api[_-]?key|secret|token|password|passwd|pwd)\s*[:=]\s*['"]?[A-Za-z0-9_./+=-]{16,}/i }
+];
 
 export async function buildContextPack({ root, scan, mode = 'overview', target = {}, maxChars = DEFAULT_MAX_CHARS, codeGraph = null }) {
   const contextMode = normalizeMode(mode);
   const graphContext = buildGraphContext(codeGraph, target, contextMode);
   const selected = selectContextFiles(scan, { mode: contextMode, target, maxChars, graphContext });
   const chunks = [];
+  const skippedFiles = [];
   let usedChars = 0;
 
   for (const file of selected) {
     const remaining = maxChars - usedChars;
     if (remaining <= 0) break;
+    const pathFinding = detectSecretRisk({ path: file.path, content: '' });
+    if (pathFinding) {
+      skippedFiles.push({ path: file.path, reason: pathFinding.reason, kind: pathFinding.kind });
+      continue;
+    }
     const limit = Math.min(MAX_CHARS_PER_FILE, remaining);
     const read = await readContextFile(root, file.path, limit);
+    const contentFinding = detectSecretRisk({ path: file.path, content: read.content });
+    if (contentFinding) {
+      skippedFiles.push({ path: file.path, reason: contentFinding.reason, kind: contentFinding.kind });
+      continue;
+    }
     usedChars += read.content.length;
     chunks.push({
       path: file.path,
@@ -37,10 +54,19 @@ export async function buildContextPack({ root, scan, mode = 'overview', target =
     target,
     budget: { maxChars, usedChars },
     files: chunks.map(({ content, ...file }) => ({ ...file, charCount: content.length })),
+    skippedFiles,
     chunks,
     graphContext,
-    markdown: buildContextMarkdown(scan, chunks, { maxChars, usedChars }, { mode: contextMode, target, graphContext })
+    markdown: buildContextMarkdown(scan, chunks, { maxChars, usedChars }, { mode: contextMode, target, graphContext, skippedFiles })
   };
+}
+
+export function detectSecretRisk({ path, content }) {
+  if (SENSITIVE_PATH_PATTERN.test(path)) return { kind: 'sensitive_path', reason: 'Sensitive file path.' };
+  for (const item of SECRET_PATTERNS) {
+    if (item.pattern.test(content || '')) return { kind: item.kind, reason: 'Sensitive content pattern.' };
+  }
+  return null;
 }
 
 async function readContextFile(root, path, limit) {
