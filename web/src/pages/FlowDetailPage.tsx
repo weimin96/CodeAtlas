@@ -44,7 +44,7 @@ export function FlowDetailPage({
             <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">触发：{flow.trigger || '未识别触发条件'}</p>
           </div>
           <div className="w-[440px] space-y-4">
-            <VerificationControl status={flow.verificationStatus} disabled={loading === 'verification'} onChange={(status) => onUpdateVerification('flow', flow.id || flow.name, status)} />
+            <VerificationControl status={flow.verificationStatus} disabled={loading === 'verification' || loading === 'analyze'} onChange={(status) => onUpdateVerification('flow', flow.id || flow.name, status)} />
             <div className="grid grid-cols-4 gap-3 text-center">
               <Metric label="步骤" value={flow.steps.length} />
             <Metric label="读取" value={flow.dataReads?.length || 0} />

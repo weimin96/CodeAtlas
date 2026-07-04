@@ -132,6 +132,8 @@ export interface AnalysisQuality {
   skippedFiles: Array<{ path: string; reason: string }>;
   parseWarnings: Array<{ path: string; reason: string }>;
   confidence: Confidence;
+  partial?: boolean;
+  stage?: string;
   tokenBudget?: {
     max: number;
     used: number;

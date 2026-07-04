@@ -22,10 +22,13 @@ const navItems: Array<{ id: PageId; label: string; icon: typeof Home }> = [
 ];
 
 const analyzeSteps: ProgressStep[] = [
-  { label: '扫描项目结构', description: '读取文件树、入口文件和符号索引', value: 20, icon: <Boxes size={15} /> },
-  { label: '整理上下文文件', description: '按优先级选择本次分析代码片段', value: 45, icon: <FileText size={15} /> },
-  { label: '调用 AI 分析', description: '生成模块、链路、风险和阅读路线', value: 70, icon: <BrainCircuit size={15} /> },
-  { label: '生成项目报告', description: '规范化结构并写入本地分析结果', value: 90, icon: <Sparkles size={15} /> }
+  { label: '扫描项目结构', description: '读取文件树、入口文件和符号索引', value: 10, icon: <Boxes size={15} /> },
+  { label: '构建代码图谱', description: '解析导入、调用和图谱邻居', value: 25, icon: <GitFork size={15} /> },
+  { label: 'AI 分析项目总览', description: '先生成总览、入口和阅读路线', value: 35, icon: <BrainCircuit size={15} /> },
+  { label: 'AI 分析模块', description: '按候选模块分批生成结构化结果', value: 55, icon: <Map size={15} /> },
+  { label: 'AI 分析链路', description: '按入口和图谱邻居提取核心链路', value: 74, icon: <Route size={15} /> },
+  { label: 'AI 分析风险', description: '基于已有阶段提取风险和数据模型', value: 88, icon: <ShieldAlert size={15} /> },
+  { label: '合并阶段结果', description: '规范化结构并写入本地分析结果', value: 94, icon: <Sparkles size={15} /> }
 ];
 
 export function AppShell({
@@ -170,15 +173,27 @@ function AnalyzeResultSummaryCard({ report, codeGraph, onNavigate }: { report: R
   const skippedFiles = quality?.skippedFiles?.length || 0;
   const graphWarnings = codeGraph?.warnings?.length || codeGraph?.totals?.warnings || 0;
   const schemaWarnings = report?.dataModel?.risks?.length || 0;
-  return <section className="rounded-xl border bg-white p-4 shadow-sm">
+  const partial = Boolean(quality?.partial);
+  const stageLabel = partialStageLabel(quality?.stage);
+  const targetPage = partial ? partialStagePage(quality?.stage) : 'risks';
+  return <section className={cn('rounded-xl border bg-white p-4 shadow-sm', partial && 'border-amber-200 bg-amber-50/35')}>
     <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
       <div>
-        <div className="flex flex-wrap items-center gap-2"><Badge variant="success">分析完成</Badge><span className="text-sm font-semibold text-slate-950">结果摘要</span></div>
-        <div className="mt-2 text-sm text-slate-600">本次报告已生成，下一步建议进入风险队列做人工确认。</div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant={partial ? 'warning' : 'success'}>{partial ? '生成中' : '分析完成'}</Badge>
+          {partial && <Badge variant="secondary">部分报告</Badge>}
+          <span className="text-sm font-semibold text-slate-950">{partial ? `当前阶段：${stageLabel}` : '结果摘要'}</span>
+        </div>
+        <div className="mt-2 text-sm text-slate-600">
+          {partial ? '阶段结果会逐步补齐。完整报告生成前，人工验证入口会暂时锁定。' : '本次报告已生成，下一步建议进入风险队列做人工确认。'}
+        </div>
       </div>
-      <Button type="button" onClick={() => onNavigate('risks')}><ShieldAlert size={15} />继续验证风险</Button>
+      <Button type="button" variant={partial ? 'outline' : 'default'} onClick={() => onNavigate(targetPage)}>
+        {partial ? <FileText size={15} /> : <ShieldAlert size={15} />}{partial ? '查看已生成内容' : '继续验证风险'}
+      </Button>
     </div>
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+      <PrecheckMetric label="当前状态" value={partial ? stageLabel : '完整报告'} />
       <PrecheckMetric label="上下文文件" value={quality?.contextFiles?.length || report?.contextFiles?.length || 0} />
       <PrecheckMetric label="token 使用量" value={tokenBudget ? `${tokenBudget.used}/${tokenBudget.max}` : '未统计'} />
       <PrecheckMetric label="跳过文件" value={skippedFiles} />
@@ -186,6 +201,22 @@ function AnalyzeResultSummaryCard({ report, codeGraph, onNavigate }: { report: R
       <PrecheckMetric label="schema warning" value={schemaWarnings} />
     </div>
   </section>;
+}
+
+function partialStageLabel(stage?: string) {
+  return {
+    overview: '项目总览',
+    modules: '模块分析',
+    flows: '链路分析',
+    risks: '风险分析'
+  }[stage || ''] || '生成中';
+}
+
+function partialStagePage(stage?: string): PageId {
+  if (stage === 'modules') return 'modules';
+  if (stage === 'flows') return 'flows';
+  if (stage === 'risks') return 'risks';
+  return 'overview';
 }
 
 function PrecheckMetric({ label, value }: { label: string; value: string | number }) {

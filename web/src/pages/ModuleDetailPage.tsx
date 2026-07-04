@@ -44,7 +44,7 @@ export function ModuleDetailPage({
             <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-600">{module.summary || module.responsibility || '暂无模块职责说明。'}</p>
           </div>
           <div className="w-[420px] space-y-4">
-            <VerificationControl status={module.verificationStatus} disabled={loading === 'verification'} onChange={(status) => onUpdateVerification('module', module.id || module.name, status)} />
+            <VerificationControl status={module.verificationStatus} disabled={loading === 'verification' || loading === 'analyze'} onChange={(status) => onUpdateVerification('module', module.id || module.name, status)} />
             <div className="grid grid-cols-2 gap-3">
               <Metric icon={<FileCode2 size={17} />} label="关键文件" value={evidence.length || module.paths.length} />
             <Metric icon={<Route size={17} />} label="相关链路" value={flows.length} />

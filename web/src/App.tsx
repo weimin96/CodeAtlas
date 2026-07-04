@@ -94,6 +94,9 @@ export default function App() {
     void workbench.updateVerification(kind, id, status);
   }
 
+  const isPartialReport = Boolean(workbench.report?.analysisQuality?.partial);
+  const hasAiAnalysis = Boolean(workbench.report && workbench.report.generatedBy !== 'heuristic');
+  const verificationLoading = isPartialReport || workbench.loading === 'analyze' ? 'analyze' : workbench.loading;
   const codeLayoutStyle = { '--ask-panel-width': askPanelOpen ? '380px' : '0px' } as CSSProperties;
 
   function openSymbol(symbol: SymbolInfo) {
@@ -118,7 +121,7 @@ export default function App() {
     config={workbench.config}
     notice={workbench.notice}
     loading={workbench.loading}
-    hasAiAnalysis={workbench.report?.generatedBy === 'ai'}
+    hasAiAnalysis={hasAiAnalysis}
     onNavigate={setActivePage}
     onAnalyze={workbench.analyze}
     onCancelAnalyze={workbench.cancelAnalyze}
@@ -131,11 +134,11 @@ export default function App() {
     <Suspense fallback={<div className="rounded-lg border bg-white p-6 text-sm text-slate-500">页面加载中...</div>}>
       {activePage === 'overview' && <OverviewPage payload={workbench.payload} report={workbench.report} codeGraph={workbench.codeGraph} onNavigate={setActivePage} />}
       {activePage === 'modules' && <ModuleMapPage payload={workbench.payload} report={workbench.report} onOpenModule={openModule} />}
-      {activePage === 'module-detail' && <ModuleDetailPage report={workbench.report} activeModuleId={activeModuleId} loading={workbench.loading} onBack={() => setActivePage('modules')} onOpenFile={openCodeReference} onUpdateVerification={changeVerification} />}
+      {activePage === 'module-detail' && <ModuleDetailPage report={workbench.report} activeModuleId={activeModuleId} loading={verificationLoading} onBack={() => setActivePage('modules')} onOpenFile={openCodeReference} onUpdateVerification={changeVerification} />}
       {activePage === 'flows' && <FlowPage report={workbench.report} activeFlow={workbench.activeFlow} onSelectFlow={workbench.setActiveFlow} onOpenStep={openFlowStep} onOpenFlowDetail={openFlowDetail} onNavigate={setActivePage} />}
-      {activePage === 'flow-detail' && <FlowDetailPage report={workbench.report} activeFlow={workbench.activeFlow} loading={workbench.loading} onBack={() => setActivePage('flows')} onOpenStep={openFlowStep} onUpdateVerification={changeVerification} />}
-      {activePage === 'data' && <DataModelPage payload={workbench.payload} report={workbench.report} loading={workbench.loading} onUpdateVerification={changeVerification} />}
-      {activePage === 'risks' && <RiskPage report={workbench.report} activeRisk={workbench.activeRisk} loading={workbench.loading} onSelectRisk={workbench.setActiveRisk} onOpenRiskCode={openRiskCode} onUpdateVerification={changeVerification} />}
+      {activePage === 'flow-detail' && <FlowDetailPage report={workbench.report} activeFlow={workbench.activeFlow} loading={verificationLoading} onBack={() => setActivePage('flows')} onOpenStep={openFlowStep} onUpdateVerification={changeVerification} />}
+      {activePage === 'data' && <DataModelPage payload={workbench.payload} report={workbench.report} loading={verificationLoading} onUpdateVerification={changeVerification} />}
+      {activePage === 'risks' && <RiskPage report={workbench.report} activeRisk={workbench.activeRisk} loading={verificationLoading} onSelectRisk={workbench.setActiveRisk} onOpenRiskCode={openRiskCode} onUpdateVerification={changeVerification} />}
       {activePage === 'graph' && <CodeGraphPage graph={workbench.codeGraph} report={workbench.report} config={workbench.config} currentFile={workbench.currentFile} currentSymbol={workbench.currentSymbol} activeFlow={workbench.activeFlow} activeRisk={workbench.activeRisk} loading={workbench.loading} onLoadGraph={workbench.loadCodeGraph} onOpenFile={openGraphFile} />}
       {activePage === 'history' && <HistoryPage report={workbench.report} askThreads={workbench.askThreads} />}
       {activePage === 'code' && <div className="flex min-h-[720px] flex-col gap-3 xl:h-[calc(100vh-260px)]">

@@ -65,7 +65,7 @@ export function DataModelPage({
                 </div>
                 {entity.moduleId && <Badge variant="outline">{entity.moduleId}</Badge>}
               </div>
-              <VerificationControl status={entity.verificationStatus} disabled={loading === 'verification'} onChange={(status) => onUpdateVerification('entity', entity.id || entity.name, status)} />
+              <VerificationControl status={entity.verificationStatus} disabled={loading === 'verification' || loading === 'analyze'} onChange={(status) => onUpdateVerification('entity', entity.id || entity.name, status)} />
             </div>)}
             {!reportEntities.length && symbolEntities.map((entity) => <div key={`${entity.path}-${entity.name}`} className="rounded-xl border bg-white p-4">
               <div className="font-semibold text-slate-950">{entity.name}</div>

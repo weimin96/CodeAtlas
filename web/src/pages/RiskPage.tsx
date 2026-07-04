@@ -107,7 +107,7 @@ function RiskDetailPanel({ report, risk, loading, onOpenRiskCode, onUpdateVerifi
           <Button size="sm" variant="outline" onClick={() => onOpenRiskCode(risk)}><Code2 size={14} />查看代码</Button>
         </div>
 
-        <VerificationControl status={risk.verificationStatus} disabled={loading === 'verification'} onChange={(status) => onUpdateVerification('risk', risk.id || risk.title, status)} />
+        <VerificationControl status={risk.verificationStatus} disabled={loading === 'verification' || loading === 'analyze'} onChange={(status) => onUpdateVerification('risk', risk.id || risk.title, status)} />
 
         <WhyConnectedPanel
           title="为什么这个风险影响这条链路？"

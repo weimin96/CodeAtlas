@@ -158,6 +158,10 @@ export function useWorkbenchData() {
   }
 
   async function updateVerification(kind: 'module' | 'flow' | 'risk' | 'entity', id: string, verificationStatus: VerificationStatus) {
+    if (loading === 'analyze' || report?.analysisQuality?.partial) {
+      pushNotice('warning', '分析尚未完成', '请等待完整报告生成后再标记验证状态。');
+      return;
+    }
     setLoading('verification');
     try {
       const data = await requestJson<{ report: Report }>('/api/verification', {
