@@ -1,13 +1,14 @@
 # 整改发现记录
 
 ## 基线
-- 仓库当前工作区干净。
-- package.json 提供 `npm run typecheck` 作为前端类型检查命令。
-- AppShell 已改为顶部导航。
-- Report 已有 analysisQuality、dataModel、evidenceIndex 类型和 normalizer 兜底。
-- ModuleDetailPage 已落地。
+- 工作区干净，最近提交为 `0488b05 refactor: surface frontend api errors and update readme`。
+- package.json 当前只有 dev/start/typecheck/pack:local，缺少 test/build/lint/e2e/prepublishOnly。
+- 服务端扫描器已有 regex symbol indexer，支持 JS/TS/Python/Go/Java 符号，但没有 imports/calls 图谱。
+- 前端已有 Overview、Module、Flow、Risk、Data、Code、History 页面，没有独立代码图谱页。
+- AppShell PageId 当前不包含 graph，需要新增导航项。
 
-## 建议来源要点
-- P0 已完成：顶部导航、ModuleDetailPage、报告 schema 增加 analysisQuality/dataModel/evidence、分阶段 AI 分析。
-- P1 继续处理：FlowDetailPage、RiskDetailPanel、Context Pack mode、Ask 结构化返回。
-- 展示层应从“页面上摆结果”升级为“带证据的项目理解导航”。
+## 本轮实现约束
+- 先支持 TS/JS 图谱，不扩展全语言。
+- 图谱层保持纯 ESM 和 Node 内置 API，避免引入大型依赖。
+- 前端图谱先做可验证的轻量关系视图和 Inspector，不引入 Cytoscape。
+- 每个完成项验证后提交一次。

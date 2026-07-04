@@ -17,8 +17,13 @@
   "scripts": {
     "dev": "node bin/pfo.js . --port 3000",
     "start": "node bin/pfo.js .",
+    "build": "vite build web --config web/vite.config.ts",
     "typecheck": "tsc -p web/tsconfig.json --noEmit",
-    "pack:local": "npm pack"
+    "test": "node --test server/*.test.js",
+    "test:e2e": "playwright test",
+    "lint": "node --check bin/pfo.js && node --check server/*.js",
+    "pack:local": "npm pack",
+    "prepublishOnly": "npm run typecheck && npm run test && npm run build"
   },
   "engines": {
     "node": ">=20.0.0"

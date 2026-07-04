@@ -2,36 +2,10 @@
 
 ## 2026-07-04
 - 读取项目规范、planning-with-files、frontend-design、DESIGN.md。
-- 确认仓库结构与关键文件：types、AppShell、Overview、ModuleMap、server ai、report-normalizer、server routes。
-- 创建整改计划文件、发现记录和进度记录。
-- 阶段 0 完成：建立计划文件并确认现状。
-- 阶段 0 首次提交失败：计划文件被 .gitignore 忽略，改用 git add -f 强制纳入。
-- 阶段 1 完成：新增报告质量、数据模型、证据相关类型；增强 normalizer；读取旧报告时做规范化。
-- 阶段 1 验证通过：npm run typecheck；node --check server/report-normalizer.js server/server.js。
-- 阶段 2 完成：AppShell 改为顶部项目栏和入口工具栏；Overview 增加项目 Hero 与分析质量卡片。
-- 阶段 2 验证通过：npm run typecheck。
-- 阶段 3 完成：新增 ModuleDetailPage；模块地图卡片和按钮进入模块详情；详情页代码证据可跳转代码浏览器。
-- 阶段 3 首次 typecheck 失败：证据数组类型推断过窄，已显式声明 CodeReference[]。
-- 阶段 3 验证通过：npm run typecheck。
-- 阶段 4 完成：server/ai.js 的分析 prompt 改为四阶段组织，并扩展 JSON 输出结构。
-- 阶段 4 验证通过：npm run typecheck；node --check server/ai.js。
-- 阶段 5 完成：新增 FlowDetailPage；核心链路页可进入链路详情；详情页展示链路图、时序图、代码剧本、数据读写、异常路径、断点、风险和证据。
-- 阶段 5 验证通过：npm run typecheck。
-- 阶段 6 完成：RiskPage 增加可选择风险表和详情面板；详情展示影响、验证步骤、建议测试和代码证据；可跳转相关代码。
-- 阶段 6 验证通过：npm run typecheck。
-- 阶段 7 完成：Context Pack 支持 overview/module/flow/risk/question mode；/api/context-pack 可按 mode 和 target 生成上下文；记录跳过文件。
-- 阶段 7 验证通过：node --check server/context-pack.js server/report-normalizer.js server/server.js；npm run typecheck。
-- 阶段 8 完成：Ask 返回结构化答案；AskPanel 按结论、证据、风险、下一步动作和相关文件展示；字符串错误信息保持兼容。
-- 阶段 8 验证通过：node --check server/ai.js server/server.js；npm run typecheck。
-- 阶段 9 完成：移除 Ask 非法 JSON 转 markdown 的兜底；移除 AI JSON 正则截取兜底；Context Pack 读取失败、非法 mode、非法 maxChars 均明确报错。
-- 阶段 9 验证通过：node --check server/ai.js server/context-pack.js server/server.js server/report-normalizer.js；npm run typecheck。
-- 阶段 10 完成：移除追问上下文增强中的静默读取失败；当前文件或链路步骤文件读取失败会中止追问并返回明确错误。
-- 阶段 10 验证通过：node --check server/context-enrichment.js server/server.js；npm run typecheck。
-- 阶段 11 完成：移除 scanner 中目录读取、符号输入读取、context bundle 读取的静默跳过路径，改为明确错误。
-- 阶段 11 验证通过：node --check server/scanner.js；npm run typecheck。
-- 阶段 12 完成：配置文件不存在时仍使用环境变量；配置文件存在但无法读取、JSON 不合法或解密失败时明确报错。
-- 阶段 12 验证通过：node --check server/config-store.js server/server.js；npm run typecheck。
-- 阶段 13 完成：exists 只把 ENOENT 判定为不存在；ignore 文件读取只在 ENOENT 时忽略，其他 IO 错误中止。
-- 阶段 13 验证通过：node --check server/fs-utils.js server/ignore-rules.js server/config-store.js server/report-store.js；npm run typecheck --silent。
-- 阶段 14 完成：前端 API 请求统一使用 requestJson 校验 HTTP 状态和 error 字段；配置加载失败进入明确错误展示；README 同步当前能力和明确失败策略。
-- 阶段 14 验证通过：npm run typecheck --silent。
+- 上一轮阶段 0-14 已完成并提交，最近提交为 `0488b05 refactor: surface frontend api errors and update readme`。
+- 本轮按用户新清单追加阶段 15-22：测试/CI、代码图谱、图谱页、Inspector、AI JSON repair、人工确认状态、Markdown 文档集、README。
+- 确认 package.json 缺少 test/build/lint/e2e/prepublishOnly。
+- 确认 server/scanner.js 与 symbol-indexer.js 已有符号索引，但未构建 imports/calls 图谱。
+- 确认前端 AppShell 目前没有代码图谱页入口。
+- 阶段 15 完成：新增 build/test/test:e2e/lint/prepublishOnly 脚本、Node 内置测试和 GitHub Actions CI。
+- 阶段 15 验证通过：npm run test，npm run typecheck，npm run build。
