@@ -14,6 +14,7 @@ import { deleteProjectReport, readProjectReport, writeProjectReport } from './re
 import { buildCodeGraph, findShortestPath } from './code-graph.js';
 import { buildDocumentSet } from './document-exporter.js';
 import { updateVerification } from './verification.js';
+import { recordAskThread, recordCodeGraph, recordReport, recordScanRun, recordVerification } from './sqlite-store.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(__dirname, '..');
@@ -70,7 +71,10 @@ export async function startServer({ projectDir, port, host }) {
 
   app.get('/api/project', async (_req, res, next) => {
     try {
-      if (!cache.scan) cache.scan = await scanProject(projectDir);
+      if (!cache.scan) {
+        cache.scan = await scanProject(projectDir);
+        await recordScanRun(projectDir, cache.scan);
+      }
       if (!cache.report) {
         const storedReport = await readProjectReport(projectDir);
         cache.report = storedReport ? normalizeReport(storedReport, null, cache.scan) : null;
@@ -82,6 +86,7 @@ export async function startServer({ projectDir, port, host }) {
   app.post('/api/rescan', async (_req, res, next) => {
     try {
       cache.scan = await scanProject(projectDir);
+      await recordScanRun(projectDir, cache.scan);
       const storedReport = await readProjectReport(projectDir);
       cache.report = storedReport ? normalizeReport(storedReport, null, cache.scan) : null;
       cache.contextPack = null;
@@ -92,7 +97,10 @@ export async function startServer({ projectDir, port, host }) {
 
   app.post('/api/analyze', async (req, res, next) => {
     try {
-      if (!cache.scan) cache.scan = await scanProject(projectDir);
+      if (!cache.scan) {
+        cache.scan = await scanProject(projectDir);
+        await recordScanRun(projectDir, cache.scan);
+      }
       const config = await mergeRuntimeConfig(req.body?.config || {});
       cache.report = null;
       await deleteProjectReport(projectDir);
@@ -100,6 +108,7 @@ export async function startServer({ projectDir, port, host }) {
       const report = await analyzeWithAI({ scan: cache.scan, chunks: cache.contextPack.chunks, contextPack: cache.contextPack, config });
       cache.report = normalizeReport(report, cache.contextPack, cache.scan);
       await writeProjectReport(projectDir, cache.report);
+      await recordReport(projectDir, cache.report);
       res.json({ report: cache.report, contextPack: summarizeContextPack(cache.contextPack) });
     } catch (error) { next(error); }
   });
@@ -119,7 +128,10 @@ export async function startServer({ projectDir, port, host }) {
   app.get('/api/code-graph', async (req, res, next) => {
     try {
       if (!cache.scan) cache.scan = await scanProject(projectDir);
-      if (!cache.codeGraph) cache.codeGraph = await buildCodeGraph({ root: projectDir, scan: cache.scan });
+      if (!cache.codeGraph) {
+        cache.codeGraph = await buildCodeGraph({ root: projectDir, scan: cache.scan });
+        await recordCodeGraph(projectDir, cache.codeGraph);
+      }
       const sourceId = typeof req.query.sourceId === 'string' ? req.query.sourceId : '';
       const targetId = typeof req.query.targetId === 'string' ? req.query.targetId : '';
       const connection = sourceId && targetId ? findShortestPath(cache.codeGraph, sourceId, targetId) : [];
@@ -147,6 +159,8 @@ export async function startServer({ projectDir, port, host }) {
       }
       cache.report = updateVerification(cache.report, req.body || {});
       await writeProjectReport(projectDir, cache.report);
+      await recordVerification(projectDir, req.body || {});
+      await recordReport(projectDir, cache.report);
       res.json({ report: cache.report });
     } catch (error) { next(error); }
   });
@@ -196,6 +210,7 @@ export async function startServer({ projectDir, port, host }) {
       const config = await mergeRuntimeConfig(bodyConfig);
       const enrichedContext = await enrichContext(projectDir, context);
       const answer = await askWithAI({ question: String(question), context: enrichedContext, config });
+      await recordAskThread(projectDir, { question: String(question), context: enrichedContext, answer });
       res.json({ answer });
     } catch (error) { next(error); }
   });

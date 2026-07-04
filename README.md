@@ -169,6 +169,7 @@ API Key: 留空
 - 追问会绑定当前文件、选中行、当前符号、当前链路和当前风险。
 - 追问返回结构化答案：结论、证据、风险、下一步验证动作、相关文件和可信度。
 - 追问历史会按 scope 归档到浏览器 localStorage，包括项目、链路、风险、文件、符号和选区。
+- 在支持 `node:sqlite` 的 Node 运行时，会镜像写入本地 SQLite：scan runs、reports、chat threads、verified conclusions、code graph、explain cache 表。
 - 支持导出 `repo-map.json`、`project-context.md` 和 `/api/onboarding-docs` 接管文档集。
 - 系统顶部“接管文档”按钮会下载合并后的 `codeatlas-onboarding-docs.md`。
 - `/api/onboarding-docs` 返回 `PROJECT_MAP.md`、`MODULES.md`、`CORE_FLOWS.md`、`DATA_MODEL.md`、`RISK_REGISTER.md`、`READING_PLAN.md`、`QUESTIONS.md`。
@@ -229,7 +230,7 @@ API Key 优先可通过环境变量提供。通过页面保存时，配置写入
 - Context Pack 使用字符预算近似 token 预算。
 - Context Pack mode 是启发式加权，不是调用图或本地 RAG。
 - 模块、链路、风险和数据实体的人工确认状态已支持 UI 更新并写回本地报告。
-- 追问历史已有前端 scope 归档，但追问线程、验证结论、图谱和解释缓存暂未 SQLite 化。
+- SQLite 镜像持久化依赖运行时支持 `node:sqlite`；Node 20 环境会自动跳过，不阻断主流程。
 - `/api/onboarding-docs` 暂未提供前端批量下载按钮。
 - `test:e2e` 已接入 Playwright，包含工作台 smoke 用例；CI 会安装 Chromium 后执行。
 - `lint` 已接入 ESLint；当前关闭了 `preserve-caught-error` 和 `no-useless-escape`，避免把既有错误包装和正则写法变成大范围重构。
