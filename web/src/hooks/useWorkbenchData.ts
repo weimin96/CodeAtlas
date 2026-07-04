@@ -100,8 +100,17 @@ export function useWorkbenchData() {
     try {
       const saved = await persistConfig();
       setConfig({ ...config, ...saved });
-      const data = await runAnalyzeRequest({ config, signal: controller.signal, onProgress: setAnalysisProgress });
+      const data = await runAnalyzeRequest({
+        config,
+        signal: controller.signal,
+        onProgress: setAnalysisProgress,
+        onPartial: (partialReport) => {
+          setReport(partialReport);
+          setPayload((current) => current ? { ...current, report: partialReport } : current);
+        }
+      });
       setReport(data.report);
+      setPayload((current) => current ? { ...current, report: data.report } : current);
       pushNotice('success', '分析完成', '已生成新的项目接管报告。');
     } catch (error) {
       if (controller.signal.aborted) pushNotice('info', '分析已取消', '本次 AI 分析请求已停止。');
@@ -270,7 +279,7 @@ export function useWorkbenchData() {
   };
 }
 
-async function runAnalyzeRequest({ config, signal, onProgress }: { config: AiConfig; signal: AbortSignal; onProgress: (progress: AnalysisProgress) => void }): Promise<{ report: Report }> {
+async function runAnalyzeRequest({ config, signal, onProgress, onPartial }: { config: AiConfig; signal: AbortSignal; onProgress: (progress: AnalysisProgress) => void; onPartial: (report: Report) => void }): Promise<{ report: Report }> {
   const init = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -278,7 +287,7 @@ async function runAnalyzeRequest({ config, signal, onProgress }: { config: AiCon
     signal
   };
   try {
-    return await readAnalyzeStream('/api/analyze/stream', init, onProgress);
+    return await readAnalyzeStream('/api/analyze/stream', init, onProgress, onPartial);
   } catch (error) {
     if (!isHttpStatus(error, 404) && !(error instanceof AnalyzeStreamIncompleteError)) throw error;
     onProgress({ phase: 'fallback', label: '使用兼容分析接口', value: 15 });
@@ -286,7 +295,7 @@ async function runAnalyzeRequest({ config, signal, onProgress }: { config: AiCon
   }
 }
 
-async function readAnalyzeStream(url: string, init: RequestInit, onProgress: (progress: AnalysisProgress) => void): Promise<{ report: Report }> {
+async function readAnalyzeStream(url: string, init: RequestInit, onProgress: (progress: AnalysisProgress) => void, onPartial: (report: Report) => void): Promise<{ report: Report }> {
   const response = await fetch(url, init);
   if (!response.ok || !response.body) throw await buildHttpError(response);
   const reader = response.body.getReader();
@@ -304,6 +313,10 @@ async function readAnalyzeStream(url: string, init: RequestInit, onProgress: (pr
       const event = parseSseEvent(part);
       if (!event) continue;
       if (event.event === 'progress') onProgress(event.data as AnalysisProgress);
+      if (event.event === 'partial') {
+        const partial = event.data as { report?: Report };
+        if (partial.report) onPartial(partial.report);
+      }
       if (event.event === 'done') donePayload = event.data as { report: Report };
       if (event.event === 'error') throw new Error(`AI 分析失败：${String((event.data as { error?: string })?.error || '分析失败')}`);
     }

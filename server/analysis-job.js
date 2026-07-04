@@ -13,8 +13,9 @@ const FLOW_BATCH_SIZE = 3;
 const MODULE_LIMIT = 8;
 const FLOW_LIMIT = 6;
 
-export async function runAnalysisJob({ projectDir, cache, config, signal, onProgress = () => {} }) {
+export async function runAnalysisJob({ projectDir, cache, config, signal, onProgress = () => {}, onPartial = () => {} }) {
   const stagePacks = [];
+  const stageState = { overview: {}, modules: [], flows: [], riskResult: {} };
   const assertActive = () => {
     if (signal?.aborted) throw new Error('Analysis was cancelled.');
   };
@@ -41,6 +42,8 @@ export async function runAnalysisJob({ projectDir, cache, config, signal, onProg
   const overviewPack = await buildContextPack({ root: projectDir, scan: cache.scan, mode: 'overview', maxChars: OVERVIEW_MAX_CHARS, codeGraph: cache.codeGraph });
   stagePacks.push(overviewPack);
   const overview = await analyzeOverviewWithAI({ scan: cache.scan, contextPack: overviewPack, config, signal });
+  stageState.overview = overview;
+  emitPartial('overview', stageState, stagePacks, cache.scan, onPartial);
   assertActive();
 
   const moduleCandidates = selectModuleCandidates(cache.scan);
@@ -54,6 +57,8 @@ export async function runAnalysisJob({ projectDir, cache, config, signal, onProg
     stagePacks.push(modulePack);
     const result = await analyzeModulesWithAI({ scan: cache.scan, contextPack: modulePack, candidates: batch, config, signal });
     modules.push(...result.modules);
+    stageState.modules = modules;
+    emitPartial('modules', stageState, stagePacks, cache.scan, onPartial);
     assertActive();
   }
 
@@ -68,6 +73,8 @@ export async function runAnalysisJob({ projectDir, cache, config, signal, onProg
     stagePacks.push(flowPack);
     const result = await analyzeFlowsWithAI({ scan: cache.scan, contextPack: flowPack, candidates: batch, modules, config, signal });
     flows.push(...result.flows);
+    stageState.flows = flows;
+    emitPartial('flows', stageState, stagePacks, cache.scan, onPartial);
     assertActive();
   }
 
@@ -75,6 +82,8 @@ export async function runAnalysisJob({ projectDir, cache, config, signal, onProg
   const riskPack = await buildContextPack({ root: projectDir, scan: cache.scan, mode: 'risk', target: { files: selectRiskFiles(cache.scan), modules, flows }, maxChars: STAGE_MAX_CHARS, codeGraph: cache.codeGraph });
   stagePacks.push(riskPack);
   const riskResult = await analyzeRisksWithAI({ scan: cache.scan, contextPack: riskPack, overview, modules, flows, config, signal });
+  stageState.riskResult = riskResult;
+  emitPartial('risks', stageState, stagePacks, cache.scan, onPartial);
   assertActive();
 
   emit('merge', '合并阶段结果', 94);
@@ -86,6 +95,18 @@ export async function runAnalysisJob({ projectDir, cache, config, signal, onProg
   await recordReport(projectDir, cache.report);
   emit('done', '完成', 100);
   return { report: cache.report, contextPack: summarizeContextPack(mergedContextPack) };
+}
+
+export function buildPartialReport({ stage, state, contextPack, scan }) {
+  const report = normalizeReport(mergeStageReport(state), contextPack, scan);
+  report.generatedBy = 'ai-staged-partial';
+  report.analysisQuality = {
+    ...report.analysisQuality,
+    stage,
+    partial: true,
+    confidence: report.analysisQuality?.confidence || 'guess'
+  };
+  return report;
 }
 
 export function mergeStageReport({ overview = {}, modules = [], flows = [], riskResult = {} }) {
@@ -103,6 +124,11 @@ export function mergeStageReport({ overview = {}, modules = [], flows = [], risk
     evidenceIndex: riskResult.evidenceIndex || {},
     mermaid: overview.mermaid || overview.architecture?.mermaid || ''
   };
+}
+
+function emitPartial(stage, state, packs, scan, onPartial) {
+  const contextPack = mergeContextPacks(packs);
+  onPartial({ stage, report: buildPartialReport({ stage, state, contextPack, scan }), contextPack: summarizeContextPack(contextPack) });
 }
 
 export function selectModuleCandidates(scan) {

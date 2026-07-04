@@ -134,7 +134,8 @@ export async function startServer({ projectDir, port, host, serveWeb = true, acc
         cache,
         config,
         signal: controller.signal,
-        onProgress: (data) => emit('progress', data)
+        onProgress: (data) => emit('progress', data),
+        onPartial: (data) => emit('partial', data)
       });
       emit('done', result);
       completed = true;

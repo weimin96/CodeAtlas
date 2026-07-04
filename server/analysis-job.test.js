@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeStageReport, selectFlowCandidates, selectModuleCandidates, selectRiskFiles } from './analysis-job.js';
+import { buildPartialReport, mergeStageReport, selectFlowCandidates, selectModuleCandidates, selectRiskFiles } from './analysis-job.js';
 
 const scan = {
   keyFiles: [
@@ -50,6 +50,30 @@ test('selectRiskFiles prioritizes security and data related files', () => {
   const files = selectRiskFiles(scan);
 
   assert.deepEqual(files, ['src/auth/service.ts']);
+});
+
+test('buildPartialReport marks normalized report as partial for current stage', () => {
+  const contextPack = {
+    generatedAt: new Date().toISOString(),
+    mode: 'overview',
+    target: {},
+    budget: { maxChars: 1000, usedChars: 100, estimatedTokens: 34 },
+    files: [{ path: 'src/index.ts', role: 'entry', priority: 'P0', language: 'typescript', score: 10, charCount: 100, truncated: false }],
+    chunks: [],
+    skippedFiles: []
+  };
+
+  const report = buildPartialReport({
+    stage: 'overview',
+    state: { overview: { projectOverview: { name: 'demo' } } },
+    contextPack,
+    scan
+  });
+
+  assert.equal(report.generatedBy, 'ai-staged-partial');
+  assert.equal(report.analysisQuality.partial, true);
+  assert.equal(report.analysisQuality.stage, 'overview');
+  assert.equal(report.projectOverview.name, 'demo');
 });
 
 test('mergeStageReport combines staged outputs into a report shape', () => {
