@@ -8,18 +8,19 @@ import { Card, CardContent } from '@/components/ui/card';
 import type { PageId } from '@/components/AppShell';
 import type { CoreFlow, FlowStep, Report } from '@/types';
 
-export function FlowPage({ report, activeFlow, onSelectFlow, onOpenStep, onNavigate }: {
+export function FlowPage({ report, activeFlow, onSelectFlow, onOpenStep, onOpenFlowDetail, onNavigate }: {
   report: Report | null;
   activeFlow: CoreFlow | null;
   onSelectFlow: (flow: CoreFlow) => void;
   onOpenStep: (step: FlowStep) => void;
+  onOpenFlowDetail: (flow: CoreFlow) => void;
   onNavigate: (page: PageId) => void;
 }) {
   const selected = activeFlow || report?.flows?.[0] || null;
   return <div className="space-y-4">
     <Card>
       <CardContent className="p-5">
-        <SectionTitle title="链路图（顺序流 / Mermaid）" description="节点点击可进入代码浏览器中的对应步骤。" action={<Button variant="outline" size="sm" onClick={() => onNavigate('code')}><Code2 size={15} />查看对应代码</Button>} />
+        <SectionTitle title="链路图（顺序流 / Mermaid）" description="节点点击可进入代码浏览器中的对应步骤。" action={<div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => selected && onOpenFlowDetail(selected)} disabled={!selected}><Route size={15} />链路详情</Button><Button variant="outline" size="sm" onClick={() => onNavigate('code')}><Code2 size={15} />查看对应代码</Button></div>} />
         {selected?.mermaid ? <MermaidPanel chart={selected.mermaid} /> : <EmptyState text="暂无链路图。" />}
       </CardContent>
     </Card>
@@ -55,7 +56,10 @@ export function FlowPage({ report, activeFlow, onSelectFlow, onOpenStep, onNavig
           {report?.flows?.map((flow) => <ActionItem key={flow.id || flow.name} onClick={() => onSelectFlow(flow)} className="rounded-xl bg-white p-4 text-sm">
             <div className="flex items-start justify-between gap-3"><div className="font-semibold text-slate-950">{flow.name}</div><PriorityBadge priority={flow.priority} /></div>
             <div className="mt-2 line-clamp-2 text-sm text-slate-600">{flow.trigger}</div>
-            <div className="mt-3 text-xs text-muted-foreground">{flow.steps.length} 个步骤 · {flow.kind || 'unknown'}</div>
+            <div className="mt-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+              <span>{flow.steps.length} 个步骤 · {flow.kind || 'unknown'}</span>
+              <Button variant="ghost" size="sm" className="h-auto px-0 text-blue-700" onClick={(event) => { event.stopPropagation(); onOpenFlowDetail(flow); }}>详情</Button>
+            </div>
           </ActionItem>)}
         </div>
       </CardContent>
