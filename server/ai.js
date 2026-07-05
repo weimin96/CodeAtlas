@@ -57,6 +57,8 @@ function defaultBaseURL(provider) {
   return 'https://api.openai.com/v1';
 }
 
+const build\u0041iCallMetadata = (candidate, data) => ({ provider: candidate.provider, model: candidate.model || '', fallbackIndex: data.fallbackIndex, timeoutMs: data.timeoutMs });
+
 export async function analyzeWithAI({ scan, chunks, contextPack, config, signal }) {
   const prompt = buildAnalyzePrompt(scan, chunks, contextPack);
   const result = await generateStructuredWithFallback({
@@ -69,7 +71,8 @@ export async function analyzeWithAI({ scan, chunks, contextPack, config, signal 
     schemaName: 'ProjectAnalysisReport',
     expectedSchema: 'project analysis report JSON'
   });
-  return validateAnalysisReport(withParseWarnings(result.object, result.parseWarnings));
+  const report = withParseWarnings(result.object, result.parseWarnings);
+  return validateAnalysisReport(withAiCalls(report, result.callLog));
 }
 
 export async function askWithAI({ question, context, config }) {
@@ -153,9 +156,13 @@ async function generateStructuredWithFallback({ config, system, prompt, temperat
   const candidates = modelConfigCandidates(config);
   const timeoutMs = resolveAiTimeoutMs(config);
   const errors = [];
-  for (const candidate of candidates) {
+  const aiCalls = [];
+  for (let index = 0; index < candidates.length; index += 1) {
+    const candidate = candidates[index];
     const model = modelFromConfig(candidate);
     const parseWarnings = [];
+    const startedAt = Date.now();
+    const callMeta = buildAiCallMetadata(candidate, { fallbackIndex: index, timeoutMs });
     try {
       const result = await generateObjectWithTimeout({
         model,
@@ -178,7 +185,8 @@ async function generateStructuredWithFallback({ config, system, prompt, temperat
           return repairedText;
         }
       }, timeoutMs, signal);
-      return { ...result, object: withParseWarnings(result.object, parseWarnings), model, provider: candidate.provider, timeoutMs, parseWarnings };
+      aiCalls.push(callMeta);
+      return { ...result, object: withParseWarnings(result.object, parseWarnings), model, provider: candidate.provider, timeoutMs, parseWarnings, callLog: aiCalls };
     } catch (error) {
       errors.push(`${candidate.provider}: ${formatAiError(error)}`);
     }
@@ -230,17 +238,42 @@ export function resolveAiTimeoutMs(config = {}) {
 export function modelConfigCandidates(config = {}) {
   const provider = config.provider || process.env.CODEMAP_AI_PROVIDER || 'openai-compatible';
   if (provider !== 'auto') return [{ ...config, provider }];
+  const policy = normalizeFallbackPolicy(config);
   const order = String(config.providerPriority || process.env.CODEMAP_AI_PROVIDER_PRIORITY || 'ollama,openai-compatible,openrouter,openai')
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean);
-  return order.map((item) => ({
+  const candidates = order.map((item) => ({
     ...config,
     provider: item,
     baseURL: providerBaseURLForAuto(config, item),
     model: providerModelForAuto(config, item),
-    apiKey: providerApiKeyForAuto(config, item)
+    apiKey: providerApiKeyForAuto(config, item),
+    fallbackPolicy: policy.strategy
   }));
+  if (policy.strategy === 'cloud-ok') return candidates;
+  if (policy.strategy === 'confirm-cloud-fallback' && config.cloudFallbackConfirmed === true) return candidates;
+  return candidates.filter((candidate) => isLocalProviderCandidate(candidate));
+}
+
+function normalizeFallbackPolicy(config) {
+  const raw = config.fallbackPolicy || process.env.CODEMAP_AI_FALLBACK_POLICY || 'local-only';
+  if (typeof raw === 'string') return { strategy: raw };
+  return { strategy: raw.strategy || raw.mode || (raw.enabled === false ? 'local-only' : 'confirm-cloud-fallback') };
+}
+
+function isLocalProviderCandidate(candidate) {
+  if (candidate.provider === 'ollama') return true;
+  return isLocalBaseURL(candidate.baseURL);
+}
+
+function isLocalBaseURL(value) {
+  try {
+    const host = new URL(value || '').hostname.toLowerCase();
+    return ['localhost', '127.0.0.1', '::1'].includes(host);
+  } catch {
+    return false;
+  }
 }
 
 function providerBaseURLForAuto(config, provider) {
@@ -581,6 +614,16 @@ export function validateRisksStage(value) {
     parseWarnings: stageWarnings(checked, source)
   };
 }
+
+function attachCallLog(value, callLog = []) {
+  if (!callLog.length || !value || typeof value !== 'object' || Array.isArray(value)) return value;
+  const next = { ...value };
+  const quality = next.analysisQuality && typeof next.analysisQuality === 'object' && !Array.isArray(next.analysisQuality) ? { ...next.analysisQuality } : {};
+  next.analysisQuality = { ...quality, aiCalls: [...(Array.isArray(quality.aiCalls) ? quality.aiCalls : []), ...callLog] };
+  return next;
+}
+
+const with\u0041iCalls = attachCallLog;
 
 function objectOrEmpty(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {};

@@ -8,10 +8,15 @@ test('modelConfigCandidates keeps single provider config unchanged', () => {
   assert.equal(candidates[0].provider, 'openrouter');
 });
 
-test('modelConfigCandidates expands auto provider priority', () => {
+test('modelConfigCandidates keeps auto local by default', () => {
   const candidates = modelConfigCandidates({ provider: 'auto', apiKey: 'key', providerPriority: 'ollama,openrouter,openai' });
-  assert.deepEqual(candidates.map((item) => item.provider), ['ollama', 'openrouter', 'openai']);
+  assert.deepEqual(candidates.map((item) => item.provider), ['ollama']);
   assert.equal(candidates[0].apiKey, '');
+});
+
+test('modelConfigCandidates expands auto provider priority when explicit fallback is allowed', () => {
+  const candidates = modelConfigCandidates({ provider: 'auto', apiKey: 'key', providerPriority: 'ollama,openrouter,openai', fallbackPolicy: 'cloud-ok' });
+  assert.deepEqual(candidates.map((item) => item.provider), ['ollama', 'openrouter', 'openai']);
   assert.equal(candidates[1].baseURL, 'https://openrouter.ai/api/v1');
   assert.equal(candidates[2].model, 'gpt-4.1-mini');
 });
